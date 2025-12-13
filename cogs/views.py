@@ -4,6 +4,18 @@ from discord.ui import ActionRow, Container, LayoutView, Section, Separator, Vie
 from utils.utils import EMOJIS, move_channel,get_user_id
 from cogs.game_modals import OW2, Bo7, SingularityBo7, BF6, Warzone, Rivals
 import utils.database as db
+import re
+
+# Helper function to extract user ID from mention text
+def extract_user_id_from_text(text):
+    """Extract user ID from mention text like '# <@123456789>'"""
+    try:
+        if not text:
+            return None
+        match = re.search(r'<@(\d+)>', str(text))
+        return int(match.group(1)) if match else None
+    except:
+        return None
 
 class Bo7FinishSelect(Select):
     def __init__(self, pending_view: 'Pending',guild_id,parent_message,original_content,uid,acc):
@@ -61,10 +73,12 @@ class Pending(LayoutView):
 
         container = Container()
 
-        # Part 1: user mention
-        user = TextDisplay(f'# <@{uid}>')
+        # Part 1: user mention - MAKE SURE THIS IS PRESERVED
+        user_mention_text = f'# <@{uid}>' if uid else '# <@unknown>'
+        user = TextDisplay(user_mention_text)
         container.add_item(user)
         container.add_item(Separator())
+        
         # Part 2: text and a button on the same line
         finished_btn = Button(label='خلصت الاكونت', style=ButtonStyle.gray,emoji='🏁', custom_id='pending_finished')
         async def _finished_on_click(interaction: Interaction):
@@ -76,8 +90,13 @@ class Pending(LayoutView):
         container.add_item(part2_row)
         container.add_item(Separator())
 
-        # Part 3: acc content (multiline-safe)
-        container.add_item(TextDisplay('```'+str(acc)+'```'))
+        # Part 3: acc content (multiline-safe) - MAKE SURE THIS IS PRESERVED
+        if acc:
+            # Clean the acc content - remove any existing code block markers
+            clean_acc = str(acc).replace('```', '').strip()
+            container.add_item(TextDisplay(f'```{clean_acc}```'))
+        else:
+            container.add_item(TextDisplay('```No account content provided```'))
         container.add_item(Separator())
 
         # Part 4: text and a red button on the same line
@@ -142,7 +161,7 @@ class Pending(LayoutView):
                 acc=self.acc
                 )
             )
-        
+
 class Money(Modal):
     def __init__(self,guild_id,msg,uid,acc: str | None = None):
         super().__init__(title='Price 🏷️')
@@ -167,6 +186,7 @@ class Money(Modal):
         title = "الكاش وصل يا برو 🤑"
         desc = f'**Price**\n```{price} L.E```'
         await move_channel(channel,category_name,emoji,color,title,desc)
+        
         # Build final view with no buttons, just text (mention, account content, price)
         final_view = self._build_final_view(price)
         await self.msg.edit(view=final_view)
@@ -175,12 +195,14 @@ class Money(Modal):
         """Build final view with no buttons, just text: mention, account content, price"""
         container = Container()
         
-        # Part 1: user mention
+        # Part 1: user mention - PRESERVED
         container.add_item(TextDisplay(f'# <@{self.uid}>'))
         container.add_item(Separator())
         
-        # Part 2: account content
-        container.add_item(TextDisplay(str(self.acc) if self.acc is not None else ''))
+        # Part 2: account content - PRESERVED
+        if self.acc:
+            clean_acc = str(self.acc).replace('```', '').strip()
+            container.add_item(TextDisplay(f'```{clean_acc}```'))
         
         # Wallets registered under account content
         try:
@@ -227,7 +249,7 @@ class MarkSoldLayout(LayoutView):
 
         container = Container()
 
-        # Part 1: user mention
+        # Part 1: user mention - PRESERVED
         container.add_item(TextDisplay(f'# <@{uid}>'))
         container.add_item(Separator())
 
@@ -242,6 +264,7 @@ class MarkSoldLayout(LayoutView):
             title = "الكاش 💰"
             desc = 'دوس علي الزرار اللي تحت لما فلوس الاكونت توصلك'
             await move_channel(channel, category_name, emoji, color, title, desc)
+            
             # Edit message to show "cash in" button
             updated_view = CashInLayout(self.guild_id, self.uid, self.acc)
             await interaction.message.edit(view=updated_view)
@@ -252,8 +275,12 @@ class MarkSoldLayout(LayoutView):
         container.add_item(part2_row)
         container.add_item(Separator())
 
-        # Part 3: acc content
-        container.add_item(TextDisplay('```'+str(acc)+'```' if acc is not None else ''))
+        # Part 3: acc content - PRESERVED
+        if acc:
+            clean_acc = str(acc).replace('```', '').strip()
+            container.add_item(TextDisplay(f'```{clean_acc}```'))
+        else:
+            container.add_item(TextDisplay('```No account content provided```'))
 
         # Wallets registered under account content
         try:
@@ -324,7 +351,7 @@ class CashInLayout(LayoutView):
 
         container = Container()
 
-        # Part 1: user mention
+        # Part 1: user mention - PRESERVED
         container.add_item(TextDisplay(f'# <@{uid}>'))
         container.add_item(Separator())
 
@@ -338,8 +365,12 @@ class CashInLayout(LayoutView):
         container.add_item(part2_row)
         container.add_item(Separator())
 
-        # Part 3: acc content
-        container.add_item(TextDisplay('```'+str(acc)+'```' if acc is not None else ''))
+        # Part 3: acc content - PRESERVED
+        if acc:
+            clean_acc = str(acc).replace('```', '').strip()
+            container.add_item(TextDisplay(f'```{clean_acc}```'))
+        else:
+            container.add_item(TextDisplay('```No account content provided```'))
 
         # Wallets registered under account content
         try:

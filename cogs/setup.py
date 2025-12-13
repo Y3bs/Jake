@@ -4,6 +4,7 @@ from discord.ext import commands
 from discord.ui import LayoutView, Container, TextDisplay, Separator, Button, ActionRow
 from discord import Interaction, TextStyle, Color, app_commands
 from cogs.acc_panel import Accs  # Import your existing Accs panel
+from utils.storage import save_panel_channel_id
 
 class SetupButton(Button):
     def __init__(self, original_interaction: Interaction):
@@ -20,7 +21,10 @@ class SetupButton(Button):
         guild = interaction.guild
         user = interaction.user
         
-        # Create required categories
+        # 1. Create panel category
+        panel_category = await self._create_panel_category(guild)
+        
+        # 2. Create required account categories
         required_categories = ["Pending 🔃", "For Sale 🏷️", "Sold 📦", "Banned ⛔", "Paid 💰"]
         created_categories = []
         
@@ -30,23 +34,33 @@ class SetupButton(Button):
                 category = await guild.create_category(category_name)
                 created_categories.append(category_name)
         
-        # Create panel channel
-        panel_channel = await self._create_panel_channel(guild, user)
+        # 3. Create panel channel in panel category
+        panel_channel = await self._create_panel_channel(guild, panel_category)
         
-        # Send panel and pin it
+        # 4. Save panel channel ID to storage
+        save_panel_channel_id(guild.id, panel_channel.id)
+        
+        # 5. Send panel and pin it
         panel_message = await self._send_and_pin_panel(panel_channel, guild.id)
         
-        # Edit the original message to show completion
-        await self._edit_original_message(created_categories, panel_channel)
+        # 6. Edit the original message to show completion
+        await self._edit_original_message(panel_category, created_categories, panel_channel)
 
-    async def _create_panel_channel(self, guild, user):
-        """Create the panel channel with proper permissions"""
+    async def _create_panel_category(self, guild):
+        """Create the panel category if it doesn't exist"""
+        panel_category = discord.utils.get(guild.categories, name="📌 Panel")
+        if not panel_category:
+            panel_category = await guild.create_category("📌 Panel", position=0)
+        return panel_category
+
+    async def _create_panel_channel(self, guild, panel_category):
+        """Create the panel channel in the panel category"""
         # Check if panel channel already exists
         existing_channel = discord.utils.get(guild.text_channels, name="📮-account-panel")
         if existing_channel:
             return existing_channel
         
-        # Create channel in top position
+        # Create channel in panel category
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(
                 view_channel=True,
@@ -64,7 +78,8 @@ class SetupButton(Button):
         panel_channel = await guild.create_text_channel(
             "📮-account-panel",
             overwrites=overwrites,
-            position=0,  # Put at top of channel list
+            category=panel_category,
+            position=0,
             topic="🎮 لوحة تقديم الحسابات - استخدم هذه اللوحة لتقديم حسابات الألعاب للبيع"
         )
         
@@ -93,7 +108,7 @@ class SetupButton(Button):
         
         return panel_message
 
-    async def _edit_original_message(self, created_categories, panel_channel):
+    async def _edit_original_message(self, panel_category, created_categories, panel_channel):
         """Edit the original setup message to show completion"""
         completion_view = LayoutView()
         completion_container = Container(accent_color=Color.green())
@@ -102,14 +117,20 @@ class SetupButton(Button):
         completion_container.add_item(TextDisplay(content="تم تكوين سيرفرك الآن بالكامل لإدارة الحسابات!"))
         completion_container.add_item(Separator())
         
+        # Panel category created
+        completion_container.add_item(TextDisplay(content="## 📍 فئة اللوحة الرئيسية"))
+        completion_container.add_item(TextDisplay(content=f"تم إنشاء فئة {panel_category.mention} للوحة الحسابات"))
+        
+        completion_container.add_item(Separator())
+        
         # Categories created
         if created_categories:
-            completion_container.add_item(TextDisplay(content="## 📁 الفئات التي تم إنشاؤها"))
+            completion_container.add_item(TextDisplay(content="## 📁 فئات الحسابات التي تم إنشاؤها"))
             categories_text = "\n".join([f"• {cat}" for cat in created_categories])
             completion_container.add_item(TextDisplay(content=categories_text))
         else:
-            completion_container.add_item(TextDisplay(content="## 📁 الفئات"))
-            completion_container.add_item(TextDisplay(content="جميع الفئات المطلوبة كانت موجودة بالفعل"))
+            completion_container.add_item(TextDisplay(content="## 📁 فئات الحسابات"))
+            completion_container.add_item(TextDisplay(content="جميع فئات الحسابات المطلوبة كانت موجودة بالفعل"))
         
         completion_container.add_item(Separator())
         
@@ -151,7 +172,8 @@ class SetupV2(LayoutView):
         
         # What will be set up
         container.add_item(TextDisplay(content="## 📋 سيقوم هذا بإنشاء:"))
-        setup_items = TextDisplay(content="""• **فئات تنظيمية** (Pending, For Sale, Sold, إلخ.)
+        setup_items = TextDisplay(content="""• **فئة لوحة الحسابات 📌** (لوحة رئيسية)
+• **فئات الحسابات** (Pending, For Sale, Sold, إلخ.)
 • **قناة لوحة الحسابات** مع رسالة مثبتة
 • **هيكل الصلاحيات المناسب**
 • **نظام سير العمل الكامل**""")

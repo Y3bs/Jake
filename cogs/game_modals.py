@@ -448,11 +448,9 @@ class OW2(Modal):
         if self.acc:
             acc_content_parts.append("")
             acc_content_parts.append(str(self.acc)+'\n')
-        if not rfr:
-            acc_content_parts.append(f"Roles: {roles}")
-            acc_content_parts.append(f"Rank: {rank}")
-        else:
-            acc_content_parts.append(f"RFR: {'RFR' if rfr else 'NoRFR'}")
+        acc_content_parts.append(f"Roles: {roles}")
+        acc_content_parts.append(f"Rank: {rank}")
+        acc_content_parts.append(f"RFR: {'RFR' if rfr else 'NoRFR'}")
         
         acc_content = "\n".join(acc_content_parts)
         
@@ -471,7 +469,7 @@ class OW2(Modal):
             if sale_category is None:
                 sale_category = await guild.create_category("For Sale 🏷️")
             try:
-                account_name = f'ow2-{len(roles)}-role-{rank}-{rfr}'
+                account_name = f'ow2-{len(roles)}-role-{rank}-{'RFR' if rfr else 'noRFR'}'
                 await self.parent_message.channel.edit(category=sale_category, name=f"🏷️{account_name}")
             except Exception:
                 pass
@@ -487,7 +485,7 @@ class OW2(Modal):
             if category is None:
                 category = await guild.create_category("For Sale 🏷️")
 
-            account_name = f'ow2-{roles}-role-{rank}-{rfr}'
+            account_name = f'ow2-{roles}-role-{rank}-{'RFR' if rfr else 'noRFR'}'
 
             user = interaction.user
             everyone = guild.default_role

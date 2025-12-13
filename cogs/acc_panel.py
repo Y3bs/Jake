@@ -203,7 +203,14 @@ class Panel(commands.Cog):
             return await interaction.followup.send(embed=error,ephemeral=True)
         channel = interaction.channel
 
-        await channel.send(view=Accs(interaction.guild.id))
+        # Send the panel
+        view = Accs(interaction.guild.id)
+        message = await channel.send(view=view)
+        
+        # Store the panel channel ID for future updates
+        from utils.storage import save_panel_channel_id
+        save_panel_channel_id(interaction.guild.id, channel.id)
+        
         await interaction.followup.send('Panel created ✅',ephemeral=True)
 
 async def setup(client):
