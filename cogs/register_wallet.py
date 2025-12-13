@@ -2,24 +2,25 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from discord import Embed, Interaction, SelectOption
-from discord.ui import View,Select
+from discord.ui import View, Select
 from utils.utils import EMOJIS
-from cogs.wallet_modals import Vodafone,Instapay,Visa
+from cogs.wallet_modals import Vodafone, Instapay, Visa
 
 class WalletTypeDropDown(Select):
     def __init__(self):
         options = [
-            SelectOption(label='Vodafone Cash',value='vodafone',emoji=EMOJIS['vodafone']),
-            SelectOption(label='Instapay',value='instapay',emoji=EMOJIS['instapay']),
-            SelectOption(label='Visa',value='visa',emoji=EMOJIS['visa'])
+            SelectOption(label='فودافون كاش', value='vodafone', emoji=EMOJIS['vodafone']),
+            SelectOption(label='انستاباي', value='instapay', emoji=EMOJIS['instapay']),
+            SelectOption(label='فيزا', value='visa', emoji=EMOJIS['visa'])
         ]
         
         super().__init__(
-            placeholder='Select a wallet type',
+            placeholder='اختر نوع المحفظة',
             min_values=1,
             max_values=1,
             options=options
         )
+    
     async def callback(self, interaction: Interaction):
         selected = self.values[0]
         if selected == 'vodafone':
@@ -37,21 +38,21 @@ class WalletType(View):
     
 
 class Wallet(commands.Cog):
-    def __init__(self,client):
+    def __init__(self, client):
         self.client = client
     
-    @app_commands.command(name='register_wallet',description='save ur payment addresse for ez access later')
-    async def register_wallet(self,interaction: Interaction):
+    @app_commands.command(name='register_wallet', description='احفظ عنوان الدفع الخاص بك للوصول السهل لاحقًا')
+    async def register_wallet(self, interaction: Interaction):
         await interaction.response.defer(ephemeral=True)
         embed = Embed(
-            title='Choose your wallet type',
-            description=f'Supported types',
+            title='اختر نوع محفظتك',
+            description='الأنواع المدعومة',
             color=0x040dbf
         )
-        embed.add_field(name=f'{EMOJIS['vodafone']} Vodafone Cash',value=' ')
-        embed.add_field(name=f'{EMOJIS['instapay']} Instapay',value=' ')
-        embed.add_field(name=f'{EMOJIS['visa']} Visa',value=' ')
-        await interaction.followup.send(embed=embed,view=WalletType(),ephemeral=True)
+        embed.add_field(name=f'{EMOJIS["vodafone"]} فودافون كاش', value=' ')
+        embed.add_field(name=f'{EMOJIS["instapay"]} انستاباي', value=' ')
+        embed.add_field(name=f'{EMOJIS["visa"]} فيزا', value=' ')
+        await interaction.followup.send(embed=embed, view=WalletType(), ephemeral=True)
 
 async def setup(client):
     await client.add_cog(Wallet(client))

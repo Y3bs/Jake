@@ -9,7 +9,7 @@ class SetupButton(Button):
     def __init__(self, original_interaction: Interaction):
         super().__init__(
             style=discord.ButtonStyle.primary,
-            label="🚀 Setup Bot",
+            label="🚀 إعداد البوت",
             custom_id="setup_bot_button"
         )
         self.original_interaction = original_interaction
@@ -65,7 +65,7 @@ class SetupButton(Button):
             "📮-account-panel",
             overwrites=overwrites,
             position=0,  # Put at top of channel list
-            topic="🎮 Account Submission Panel - Use this panel to submit your game accounts for sale"
+            topic="🎮 لوحة تقديم الحسابات - استخدم هذه اللوحة لتقديم حسابات الألعاب للبيع"
         )
         
         return panel_channel
@@ -83,12 +83,12 @@ class SetupButton(Button):
         
         # Send instructions message (optional)
         instructions = await channel.send(
-            content="## 📋 How to Use:\n"
-                   "1. **Select your game** from the dropdown above\n"
-                   "2. **Upload your account file** (.txt) when prompted\n"
-                   "3. **Follow the process** in your private channel\n"
-                   "4. **Track your sales** with `/me` command\n\n"
-                   "*Need help? Use `/help` command*"
+            content="## 📋 كيفية الاستخدام:\n"
+                   "1. **اختر لعبتك** من القائمة المنسدلة أعلاه\n"
+                   "2. **ارفع ملف حسابك** (.txt) عندما تتم مطالبتك بذلك\n"
+                   "3. **اتبع العملية** في قناتك الخاصة\n"
+                   "4. **تتبع مبيعاتك** باستخدام الأمر `/me`\n\n"
+                   "*بحاجة إلى مساعدة؟ استخدم الأمر `/help`*"
         )
         
         return panel_message
@@ -98,34 +98,34 @@ class SetupButton(Button):
         completion_view = LayoutView()
         completion_container = Container(accent_color=Color.green())
         
-        completion_container.add_item(TextDisplay(content="# ✅ Setup Complete!"))
-        completion_container.add_item(TextDisplay(content="Your server is now fully configured for account management!"))
+        completion_container.add_item(TextDisplay(content="# ✅ اكتمل الإعداد!"))
+        completion_container.add_item(TextDisplay(content="تم تكوين سيرفرك الآن بالكامل لإدارة الحسابات!"))
         completion_container.add_item(Separator())
         
         # Categories created
         if created_categories:
-            completion_container.add_item(TextDisplay(content="## 📁 Created Categories"))
+            completion_container.add_item(TextDisplay(content="## 📁 الفئات التي تم إنشاؤها"))
             categories_text = "\n".join([f"• {cat}" for cat in created_categories])
             completion_container.add_item(TextDisplay(content=categories_text))
         else:
-            completion_container.add_item(TextDisplay(content="## 📁 Categories"))
-            completion_container.add_item(TextDisplay(content="All required categories were already set up"))
+            completion_container.add_item(TextDisplay(content="## 📁 الفئات"))
+            completion_container.add_item(TextDisplay(content="جميع الفئات المطلوبة كانت موجودة بالفعل"))
         
         completion_container.add_item(Separator())
         
         # Panel channel info
-        completion_container.add_item(TextDisplay(content="## 📋 Account Panel"))
-        completion_container.add_item(TextDisplay(content=f"Panel created in {panel_channel.mention} and pinned for easy access!"))
+        completion_container.add_item(TextDisplay(content="## 📋 لوحة الحسابات"))
+        completion_container.add_item(TextDisplay(content=f"تم إنشاء اللوحة في {panel_channel.mention} وتثبيتها للوصول السهل!"))
         
         completion_container.add_item(Separator())
         
         # Next steps
-        completion_container.add_item(TextDisplay(content="## 🎯 Ready to Go!"))
-        next_steps = TextDisplay(content="""**Users can now:**
-• Use the account panel to submit accounts
-• Register with `/register` command  
-• Add wallets with `/register_wallet`
-• Check stats with `/me` command""")
+        completion_container.add_item(TextDisplay(content="## 🎯 جاهز للانطلاق!"))
+        next_steps = TextDisplay(content="""**يمكن للمستخدمين الآن:**
+• استخدام لوحة الحسابات لتقديم الحسابات
+• التسجيل باستخدام الأمر `/register`  
+• إضافة محافظ باستخدام الأمر `/register_wallet`
+• فحص الإحصائيات باستخدام الأمر `/me`""")
         completion_container.add_item(next_steps)
         
         completion_view.add_item(completion_container)
@@ -145,26 +145,26 @@ class SetupV2(LayoutView):
         container = Container(accent_color=Color.blue())
         
         # Header
-        container.add_item(TextDisplay(content="# ⚙️ Bot Setup Wizard"))
-        container.add_item(TextDisplay(content="Click the button below to automatically set up the bot for your server"))
+        container.add_item(TextDisplay(content="# ⚙️ معالج إعداد البوت"))
+        container.add_item(TextDisplay(content="انقر على الزر أدناه لإعداد البوت تلقائيًا لسيرفرك"))
         container.add_item(Separator())
         
         # What will be set up
-        container.add_item(TextDisplay(content="## 📋 This will create:"))
-        setup_items = TextDisplay(content="""• **Organizational Categories** (Pending, For Sale, Sold, etc.)
-• **Account Panel Channel** with pinned message
-• **Proper Permission Structure**
-• **Complete Workflow System**""")
+        container.add_item(TextDisplay(content="## 📋 سيقوم هذا بإنشاء:"))
+        setup_items = TextDisplay(content="""• **فئات تنظيمية** (Pending, For Sale, Sold, إلخ.)
+• **قناة لوحة الحسابات** مع رسالة مثبتة
+• **هيكل الصلاحيات المناسب**
+• **نظام سير العمل الكامل**""")
         container.add_item(setup_items)
         
         container.add_item(Separator())
         
         # Requirements
-        container.add_item(TextDisplay(content="## ⚠️ Requirements"))
-        requirements = TextDisplay(content="""• Bot needs **Manage Channels** permission
-• Bot needs **Manage Messages** permission  
-• Bot needs **View Channel** permission
-• You need **Administrator** role""")
+        container.add_item(TextDisplay(content="## ⚠️ المتطلبات"))
+        requirements = TextDisplay(content="""• يحتاج البوت إلى صلاحية **إدارة القنوات**
+• يحتاج البوت إلى صلاحية **إدارة الرسائل**  
+• يحتاج البوت إلى صلاحية **عرض القناة**
+• أنت تحتاج إلى صلاحية **المشرف**""")
         container.add_item(requirements)
         
         # Add the setup button in an action row
@@ -178,7 +178,7 @@ class SetupCog(commands.Cog):
     def __init__(self, client):
         self.client = client
 
-    @app_commands.command(name="setup", description="Interactive setup to configure the bot for your server")
+    @app_commands.command(name="setup", description="إعداد تفاعلي لتكوين البوت لسيرفرك")
     @app_commands.checks.has_permissions(administrator=True)
     async def setup_v2(self, interaction: Interaction):
         """Interactive setup command with button"""
@@ -193,8 +193,8 @@ class SetupCog(commands.Cog):
         """Handle setup command errors"""
         if isinstance(error, app_commands.MissingPermissions):
             error_container = Container(accent_color=Color.red())
-            error_container.add_item(TextDisplay(content="# ⚠️ Permission Denied"))
-            error_container.add_item(TextDisplay(content="You need **Administrator** permissions to run the setup!"))
+            error_container.add_item(TextDisplay(content="# ⚠️ تم رفض الصلاحية"))
+            error_container.add_item(TextDisplay(content="أنت بحاجة إلى صلاحيات **المشرف** لتشغيل الإعداد!"))
             
             error_view = LayoutView()
             error_view.add_item(error_container)

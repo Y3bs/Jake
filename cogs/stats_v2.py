@@ -54,7 +54,7 @@ class StatsCog(commands.Cog):
     def __init__(self, client):
         self.client = client
 
-    @app_commands.command(name='me_v2', description="shows your earnings, number of banned,sold accounts")
+    @app_commands.command(name='me_v2', description="يعرض أرباحك وعدد الحسابات المباعة والمحظورة")
     async def stats_v2(self, interaction: Interaction):
         await interaction.response.defer(ephemeral=True)
         
@@ -65,8 +65,8 @@ class StatsCog(commands.Cog):
         if not user_stats:
             error_view = LayoutView()
             error_container = Container(accent_color=discord.Color.red())
-            error_container.add_item(TextDisplay(content="# ❌ Registration Required"))
-            error_container.add_item(TextDisplay(content="You are not registered in the database. Use `/register` first!"))
+            error_container.add_item(TextDisplay(content="# ❌ التسجيل مطلوب"))
+            error_container.add_item(TextDisplay(content="أنت غير مسجل في قاعدة البيانات. استخدم `/register` أولاً!"))
             error_view.add_item(error_container)
             return await interaction.followup.send(view=error_view, ephemeral=True)
         
@@ -74,8 +74,8 @@ class StatsCog(commands.Cog):
         if not user_stats.get('history'):
             no_history_view = LayoutView()
             no_history_container = Container(accent_color=discord.Color.blue())
-            no_history_container.add_item(TextDisplay(content="# 📊 No Account History"))
-            no_history_container.add_item(TextDisplay(content="You don't have any account history yet!\nStart selling accounts to see your stats here."))
+            no_history_container.add_item(TextDisplay(content="# 📊 لا يوجد تاريخ للحسابات"))
+            no_history_container.add_item(TextDisplay(content="ليس لديك أي تاريخ للحسابات بعد!\nابدأ ببيع الحسابات لترى إحصائياتك هنا."))
             no_history_view.add_item(no_history_container)
             return await interaction.followup.send(view=no_history_view, ephemeral=True)
         
@@ -95,17 +95,17 @@ class StatsCog(commands.Cog):
             main_container = Container(accent_color=discord.Color.from_rgb(0, 230, 230))
             
             # Title section
-            main_container.add_item(TextDisplay(content=f"# 📊 Stats for {interaction.user.mention}"))
+            main_container.add_item(TextDisplay(content=f"# 📊 إحصائيات {interaction.user.mention}"))
             main_container.add_item(Separator())
             
             # Stats display
             stats_text = (
-                f"**💸 Sold:** {user_stats['sold']} Account\n"
-                f"**⛔ Banned:** {user_stats['banned']} Account\n"
-                f"**📦 Success Rate:** {success_rate}%\n"
-                f"**💰 Total Earnings:** {user_stats['earnings']} L.E\n"
-                f"**⚖️ Avg. Sale Price:** {avg_sale} L.E\n"
-                f"**💳 Wallets:** {len(user_stats['wallets'])} Registered"
+                f"**💸 مباع:** {user_stats['sold']} حساب\n"
+                f"**⛔ محظور:** {user_stats['banned']} حساب\n"
+                f"**📦 معدل النجاح:** {success_rate}%\n"
+                f"**💰 إجمالي الأرباح:** {user_stats['earnings']} ج.م\n"
+                f"**⚖️ متوسط سعر البيع:** {avg_sale} ج.م\n"
+                f"**💳 محافظ:** {len(user_stats['wallets'])} مسجلة"
             )
             
             main_container.add_item(TextDisplay(content=stats_text))
@@ -134,8 +134,8 @@ class StatsCog(commands.Cog):
             # Error handling with Components V2
             error_view = LayoutView()
             error_container = Container(accent_color=discord.Color.red())
-            error_container.add_item(TextDisplay(content="# ❌ Error Generating Stats"))
-            error_container.add_item(TextDisplay(content=f"Failed to generate statistics: {str(e)}"))
+            error_container.add_item(TextDisplay(content="# ❌ خطأ في إنشاء الإحصائيات"))
+            error_container.add_item(TextDisplay(content=f"فشل في إنشاء الإحصائيات: {str(e)}"))
             error_view.add_item(error_container)
             await interaction.followup.send(view=error_view, ephemeral=True)
 

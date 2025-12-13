@@ -2,13 +2,13 @@ import platform
 import discord
 from discord.ext import commands
 from discord import Color, TextStyle, app_commands
-from discord.ui import File, FileUpload, Label, LayoutView, Container, Modal, Separator, TextDisplay, ActionRow, Select, TextInput
+from discord.ui import File, FileUpload, Label, LayoutView, Container, Modal, Separator, TextDisplay, ActionRow, Select, TextInput, Button, View
 from discord import Embed, Interaction, SelectOption
 from utils.utils import EMOJIS
 from cogs.views import Pending
 import utils.database as db
 
-SUPPORTED_GAMES = ['BO7','OW2','Rivals','Battlefield6']
+SUPPORTED_GAMES = ['BO7','OW2','Rivals','Battlefield6','WZ']
 
 class AccContent(Modal):
     def __init__(self,guild,user,game_value,guild_id:int):
@@ -21,7 +21,7 @@ class AccContent(Modal):
         self.add_item(Label(text = 'Upload your account (.txt)',component=self.upload))
     
     async def on_submit(self, interaction: Interaction):
-        await interaction.response.send_message(f'creating channel...', ephemeral=True)
+        await interaction.response.defer(ephemeral=True)
         guild = self.guild
         guild_id = self.guild_id
         user = self.user
@@ -38,10 +38,19 @@ class AccContent(Modal):
         except:
             acc_content = data.decode('latin-1',errors='ignore')
 
+        # Create the pending channel
+        await self.create_pending_channel(interaction, acc_content)
+
+    async def create_pending_channel(self, interaction: Interaction, acc_content: str = ""):
+        """Helper function to create the pending channel with or without account content"""
+        guild = self.guild
+        user = self.user
+        
         # Ensure Pending category
         category = discord.utils.get(guild.categories, name="Pending 🔃")
         if category is None:
             category = await guild.create_category("Pending 🔃")
+        
         # Create user-named channel with restricted visibility
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(view_channel=False),
@@ -58,7 +67,7 @@ class AccContent(Modal):
         )
 
         # Send Pending view and pass platform and game
-        view = Pending(guild_id, user.id, acc_content, self.game)
+        view = Pending(self.guild_id, user.id, acc_content, self.game)
         await channel.send(view=view)
 
         # Acknowledge ephemerally
@@ -67,16 +76,52 @@ class AccContent(Modal):
         except Exception:
             pass
 
+class SkipOrUploadView(View):
+    def __init__(self, guild, user, game_value, guild_id):
+        super().__init__(timeout=60)
+        self.guild = guild
+        self.user = user
+        self.game_value = game_value
+        self.guild_id = guild_id
+    
+    @discord.ui.button(label="تخطي وإنشاء القناة", style=discord.ButtonStyle.secondary, emoji="⏭️")
+    async def skip_button(self, interaction: Interaction, button: Button):
+        await interaction.response.defer(ephemeral=True)
+        
+        # Create the modal instance to use its helper method
+        modal = AccContent(self.guild, self.user, self.game_value, self.guild_id)
+        await modal.create_pending_channel(interaction, "")
+        
+        # Disable buttons after use
+        for child in self.children:
+            child.disabled = True
+        await interaction.edit_original_response(view=self)
+    
+    @discord.ui.button(label="رفع ملف الحساب", style=discord.ButtonStyle.primary, emoji="📤")
+    async def upload_button(self, interaction: Interaction, button: Button):
+        # Send the file upload modal
+        modal = AccContent(self.guild, self.user, self.game_value, self.guild_id)
+        await interaction.response.send_modal(modal)
+        
+        # Disable buttons after use
+        for child in self.children:
+            child.disabled = True
+        await interaction.edit_original_response(view=self)
+    
+    async def on_timeout(self):
+        # Disable buttons when timeout
+        for child in self.children:
+            child.disabled = True
+
 class Games(Select):
     def __init__(self, guild_id):
         self.guild_id = guild_id
-        # In the Games(Select) class __init__ method:
         options = [
             SelectOption(label='BO7', value='bo7', emoji=EMOJIS['bo7']),
             SelectOption(label='Overwatch 2', value='ow2', emoji=EMOJIS['ow2']),
             SelectOption(label='Marvel Rivals', value='rivals', emoji=EMOJIS['rivals']),
             SelectOption(label='Battlefield 6', value='battlefield6', emoji=EMOJIS['battlefield6']),
-            SelectOption(label='Warzone', value='warzone', emoji=EMOJIS['warzone']),
+            SelectOption(label='Warzone', value='warzone', emoji=EMOJIS['wz']),
         ]
         super().__init__(
             placeholder="Select your game...",
@@ -88,13 +133,35 @@ class Games(Select):
     
     async def callback(self, interaction: Interaction):
         game_value = self.values[0]
-        await interaction.response.send_modal(
-            AccContent(
-                guild = interaction.guild,
-                user = interaction.user,
-                game_value=game_value,
-                guild_id = interaction.guild.id
-            )
+        
+        # Create and send the skip/upload view
+        view = SkipOrUploadView(
+            guild=interaction.guild,
+            user=interaction.user,
+            game_value=game_value,
+            guild_id=interaction.guild.id
+        )
+        
+        embed = Embed(
+            title="خيارات رفع الحساب",
+            description="اختر كيفية المتابعة:",
+            color=Color.blue()
+        )
+        embed.add_field(
+            name="⏭️ تخطي وإنشاء القناة",
+            value="إنشاء قناة التحقق بدون رفع ملف الحساب. يمكنك إضافة تفاصيل الحساب لاحقًا في القناة.",
+            inline=False
+        )
+        embed.add_field(
+            name="📤 رفع ملف الحساب",
+            value="ارفع ملف `.txt` يحتوي على تفاصيل حسابك للتحقق.",
+            inline=False
+        )
+        
+        await interaction.response.send_message(
+            embed=embed,
+            view=view,
+            ephemeral=True
         )
 
 class Accs(LayoutView):
@@ -124,7 +191,7 @@ class Panel(commands.Cog):
     def __init__(self,client):
         self.client = client
 
-    @app_commands.command(name='acc_panel', description="sends the panel message for logging accounts")
+    @app_commands.command(name='acc_panel', description="يرسل لوحة الرسائل لتسجيل الحسابات")
     async def acc_panel(self, interaction: Interaction):
         await interaction.response.defer(ephemeral=True)
         if not interaction.user.guild_permissions.administrator:

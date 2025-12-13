@@ -12,6 +12,7 @@ EMOJIS = {
     'valorant': '<:valorant:1437768016841412668>',
     'ow2':'<:ow2:1437768015285452921>',
     'battlefield6':'<:bf6:1437768012391252108>',
+    'wz': '<:wz:1447992598253010944>',
     # platform
     'steam':'<:steam:1437767650032877608>',
     'activision':'<:activision:1437767648476921916>',
@@ -63,7 +64,6 @@ EMOJIS = {
     'weaveroperator': '<:weaveroperator:1439307463173214348>',
     'weilinoperator':'<:weilinoperator:1439307465291202672>',
     'zaverioperator': '<:zaverioperator:1439307466633380031>'
-
 }
 
 async def move_channel(channel,category_name,emoji,color,title,desc):
