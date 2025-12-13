@@ -84,4 +84,4 @@ async def on_ready():
     print(f"Database Connection: {db_status}")
     print("=" * 50)
 
-client.run('MTIxNDk2MDkyODIyMzkyMDIyOQ.Ghfc3i.x5UMj0H80rXl0ukqve90LJjmmHai_BX7dEK1xM')
+client.run(TOKEN)
