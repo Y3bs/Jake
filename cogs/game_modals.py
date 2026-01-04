@@ -120,7 +120,7 @@ class Operators(ChannelSelect):
 
 class Bo7(Modal):
     def __init__(self, guild_id, parent_message=None, original_content: str = "", uid: int | None = None, acc: str | None = None ,camo_type:str | None = None):
-        super().__init__(title="Account Details")
+        super().__init__(title="🔫 Black Ops 7 Account Details")
         self.guild_id = guild_id
         self.parent_message = parent_message
         self.original_content = original_content
@@ -419,7 +419,7 @@ class RFR(Select):
 
 class OW2(Modal):
     def __init__(self, guild_id, parent_message=None, original_content: str = "", uid: int | None = None, acc: str | None = None):
-        super().__init__(title="Account Details")
+        super().__init__(title="💣 Overwatch 2 Account Details")
         self.guild_id = guild_id
         self.parent_message = parent_message
         self.original_content = original_content
@@ -469,7 +469,10 @@ class OW2(Modal):
             if sale_category is None:
                 sale_category = await guild.create_category("For Sale 🏷️")
             try:
-                account_name = f'ow2-{len(roles)}-role-{rank}-{'RFR' if rfr else 'noRFR'}'
+                if not roles and not rank:
+                    account_name = f'ow2-{'rfr' if rfr else 'norfr'}'
+                else:
+                    account_name = f'ow2-{len(roles)}-role-{rank}-{'RFR' if rfr else 'noRFR'}'
                 await self.parent_message.channel.edit(category=sale_category, name=f"🏷️{account_name}")
             except Exception:
                 pass
@@ -530,7 +533,7 @@ class RivalsRank(Select):
 
 class Rivals(Modal):
     def __init__(self, guild_id, parent_message=None, original_content: str = "", uid: int | None = None, acc: str | None = None):
-        super().__init__(title="Account Details")
+        super().__init__(title="⚡ Marvel Rivals Account Details")
         self.guild_id = guild_id
         self.parent_message = parent_message
         self.original_content = original_content
@@ -693,7 +696,7 @@ class BF6WeaponSelect2(Select):
 # === BATTLEFIELD 6 MODAL ===
 class BF6(Modal):
     def __init__(self, guild_id, parent_message=None, original_content: str = "", uid: int | None = None, acc: str | None = None):
-        super().__init__(title="Battlefield 6 Account Details")
+        super().__init__(title="💂‍♂️ Battlefield 6 Account Details")
         self.guild_id = guild_id
         self.parent_message = parent_message
         self.original_content = original_content
@@ -793,7 +796,7 @@ class WarzoneRFR(Select):
 # === WARZONE MODAL ===
 class Warzone(Modal):
     def __init__(self, guild_id, parent_message=None, original_content: str = "", uid: int | None = None, acc: str | None = None):
-        super().__init__(title="Warzone Account Details")
+        super().__init__(title="🏴‍☠️ Warzone Account Details")
         self.guild_id = guild_id
         self.parent_message = parent_message
         self.original_content = original_content
@@ -865,6 +868,167 @@ class Warzone(Modal):
                 await interaction.response.send_message("تم حفظ تفاصيل وارزون ✅", ephemeral=True)
             except Exception:
                 pass
+
+class ValoRank(Select):
+    def __init__(self):
+        options = [
+            SelectOption(label='Iron',value='Iron',emoji=EMOJIS['iron']),
+            SelectOption(label='Bronze',value='Bronze',emoji=EMOJIS['bronze']),
+            SelectOption(label='Silver',value='Silver',emoji=EMOJIS['silver']),
+            SelectOption(label='Gold',value='Gold',emoji=EMOJIS['gold']),
+            SelectOption(label='Platinum',value='Platinum',emoji=EMOJIS['platinum']),
+            SelectOption(label='Diamond',value='Diamond',emoji=EMOJIS['diamond']),
+            SelectOption(label='Ascendent',value='Ascendent',emoji=EMOJIS['ascendent']),
+            SelectOption(label='Immortal',value='Immortal',emoji=EMOJIS['immortal']),
+            SelectOption(label='Radiant',value='Radiant',emoji=EMOJIS['radiant']),
+        ]
+        super().__init__(
+            placeholder='اختار الرانك',
+            max_values=1,
+            min_values=1,
+            custom_id='valorant_rank_selector',
+            required=False,
+            options=options
+        )
+    async def callback(self, interaction: Interaction):
+        await interaction.response.send_message(self.values[0])
+
+class ValoAgnet(Select):
+    def __init__(self):
+        options = [
+            SelectOption(label='Astra',value='Astra',emoji=EMOJIS['astra']),
+            SelectOption(label='Breach',value='Breach',emoji=EMOJIS['breach']),
+            SelectOption(label='Chamber',value='Chamber',emoji=EMOJIS['chamber']),
+            SelectOption(label='Clove',value='Clove',emoji=EMOJIS['clove']),
+            SelectOption(label='Cypher',value='Cypher',emoji=EMOJIS['cypher']),
+            SelectOption(label='Deadlock',value='Deadlock',emoji=EMOJIS['deadlock']),
+            SelectOption(label='Fade',value='Fade',emoji=EMOJIS['fade']),
+            SelectOption(label='Gekko',value='Gekko',emoji=EMOJIS['gekko']),
+            SelectOption(label='Harbor',value='Harbor',emoji=EMOJIS['harbor']),
+            SelectOption(label='Iso',value='Iso',emoji=EMOJIS['iso']),
+            SelectOption(label='KAY/O',value='KAY/O',emoji=EMOJIS['kayo']),
+            SelectOption(label='Killjoy',value='Killjoy',emoji=EMOJIS['killjoy']),
+            SelectOption(label='Neon',value='Neon',emoji=EMOJIS['neon']),
+            SelectOption(label='Omen',value='Omen',emoji=EMOJIS['omen']),
+            SelectOption(label='Raze',value='Raze',emoji=EMOJIS['raze']),
+            SelectOption(label='Reyna',value='Reyna',emoji=EMOJIS['reyna']),
+            SelectOption(label='Skye',value='Skye',emoji=EMOJIS['skye']),
+            SelectOption(label='Tejo',value='Tejo',emoji=EMOJIS['tejo']),
+            SelectOption(label='Veto',value='Veto',emoji=EMOJIS['veto']),
+            SelectOption(label='Viper',value='Viper',emoji=EMOJIS['viper']),
+            SelectOption(label='Vyse',value='Vyse',emoji=EMOJIS['vyse']),
+            SelectOption(label='Waylay',value='Waylay',emoji=EMOJIS['waylay']),
+            SelectOption(label='Yoru',value='Yoru',emoji=EMOJIS['yoru']),
+        ]
+        super().__init__(
+            placeholder='اختار الشخصيات المفتوحة',
+            min_values=0,
+            max_values=len(options),
+            required=False,
+            options=options,
+            custom_id='valorant_agent_selector',
+        )
+    async def callback(self, interaction: Interaction):
+        await interaction.response.send_message(self.values)
+
+class Valorant(Modal):
+    def __init__(self, guild_id, parent_message=None, original_content: str = "", uid: int | None = None, acc: str | None = None):
+        super().__init__(title="💢 Valorant Account Details")
+        self.guild_id = guild_id
+        self.parent_message = parent_message
+        self.original_content = original_content
+        self.uid = uid
+        self.acc = acc
+
+        self.level_input = TextInput(label='Level', required=True, placeholder='حط لفل الاكونت')
+        self.add_item(self.level_input)
+
+        self.rank_input = Label(text='Rank', component=ValoRank())
+        self.add_item(self.rank_input)
+
+        self.agent_input = Label(text='Agents', component=ValoAgnet())
+        self.add_item(self.agent_input)
+    
+    async def on_submit(self, interaction: Interaction):
+        # Validate level input
+        try:
+            level = int(self.level_input.value)
+        except (TypeError, ValueError):
+            return await interaction.response.send_message('لازم لفل الاكونت يكون رقم فقط', ephemeral=True)
+        
+        # Get rank value (handle empty selection)
+        rank = self.rank_input.component.values[0] if self.rank_input.component.values else None
+        agents = self.agent_input.component.values if self.agent_input.component.values else None
+        guild = interaction.guild
+        
+        # Build account content string from modal data
+        acc_content_parts = []
+        
+        # Include original account content if it exists
+        if self.acc:
+            acc_content_parts.append("")
+            acc_content_parts.append(str(self.acc)+'\n')
+        
+        acc_content_parts.append(f"Level: {level}")
+        acc_content_parts.append(f"Rank: {rank}")
+        acc_content_parts.append(f"Agents: {agents}")
+        
+        acc_content = "\n".join(acc_content_parts)
+        
+        # Update the original pending message to MarkSoldLayout with account content
+        if self.parent_message is not None:
+            try:
+                from cogs.views import MarkSoldLayout  # local import to avoid circular
+                updated_view = MarkSoldLayout(self.guild_id, self.uid, acc=acc_content)
+                await self.parent_message.edit(view=updated_view)
+            except Exception as e:
+                print(f"Error updating message view: {e}")
+        
+        # Move current channel to For Sale with the edited message
+        if self.parent_message is not None:
+            sale_category = discord.utils.get(guild.categories, name="For Sale 🏷️")
+            if sale_category is None:
+                sale_category = await guild.create_category("For Sale 🏷️")
+            try:
+                account_name = f'valo-{level}'
+                if rank:
+                    account_name = f'valo-{level}-{rank.lower()}'
+                await self.parent_message.channel.edit(category=sale_category, name=f"🏷️{account_name}")
+            except Exception:
+                pass
+
+            # Acknowledge submission ephemerally
+            try:
+                await interaction.response.send_message("تم حفظ التفاصيل ✅", ephemeral=True)
+            except Exception:
+                pass
+        else:
+            # If no parent_message, create new channel (original behavior)
+            category = discord.utils.get(guild.categories, name="For Sale 🏷️")
+            if category is None:
+                category = await guild.create_category("For Sale 🏷️")
+
+            account_name = f'valo-{level}'
+            if rank:
+                account_name = f'valo-{level}-{rank.lower()}'
+
+            user = interaction.user
+            everyone = guild.default_role
+            overwrites = {
+                everyone: discord.PermissionOverwrite(view_channel=False),
+                user: discord.PermissionOverwrite(view_channel=True, send_messages=True)
+            }
+            channel = await category.create_text_channel(f'🏷️{account_name}', overwrites=overwrites)
+            confirm_embed = Embed(
+                title='✅ Channel created successfully',
+                description=f'Your channel\n# {channel.mention}',
+                color=0x038c07
+            )
+            await interaction.response.send_message(embed=confirm_embed, ephemeral=True)
+            from cogs.views import MarkSoldLayout  # local import to avoid circular
+            msg = await channel.send(view=MarkSoldLayout(self.guild_id, interaction.user.id, acc=acc_content))
+            await msg.pin()
+
 
 async def setup(client):
     pass

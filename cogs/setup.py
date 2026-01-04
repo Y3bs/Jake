@@ -4,6 +4,7 @@ from discord.ext import commands
 from discord.ui import LayoutView, Container, TextDisplay, Separator, Button, ActionRow
 from discord import Interaction, TextStyle, Color, app_commands
 from cogs.acc_panel import Accs  # Import your existing Accs panel
+import utils.database as db
 from utils.storage import save_panel_channel_id
 
 class SetupButton(Button):
@@ -45,6 +46,9 @@ class SetupButton(Button):
         
         # 6. Edit the original message to show completion
         await self._edit_original_message(panel_category, created_categories, panel_channel)
+
+        # 7. Register user to database
+        db.save_player(interaction.user.id)
 
     async def _create_panel_category(self, guild):
         """Create the panel category if it doesn't exist"""
@@ -100,7 +104,7 @@ class SetupButton(Button):
         instructions = await channel.send(
             content="## 📋 كيفية الاستخدام:\n"
                    "1. **اختر لعبتك** من القائمة المنسدلة أعلاه\n"
-                   "2. **ارفع ملف حسابك** (.txt) عندما تتم مطالبتك بذلك\n"
+                   "2. تقدر تختار بين انك ترفع ملف الحساب او تتخطى الخطوة\n"
                    "3. **اتبع العملية** في قناتك الخاصة\n"
                    "4. **تتبع مبيعاتك** باستخدام الأمر `/me`\n\n"
                    "*بحاجة إلى مساعدة؟ استخدم الأمر `/help`*"

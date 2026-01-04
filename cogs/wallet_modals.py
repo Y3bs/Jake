@@ -11,28 +11,28 @@ class Vodafone(Modal):
             TextInput(label='Wallet Number',style=TextStyle.short,min_length=11,max_length=11,required=True)
         )
 
-    async def callback(self, interaction: Interaction):
+    async def on_submit(self, interaction: Interaction):
         wallet = self.children[0].value
         await interaction.response.defer(ephemeral=True)
 
         if not check_wallet_type('vodafone',wallet):
             error = Embed(
-                title='❌ Invalid Wallet Number',
-                description='Make sure to put a valid wallet number not just any number',
+                title='❌ رقم محفظة غير صالح',
+                description='أتأكد انك تحط رقم محفظة موجود فعلا',
                 color=0xE80000
             )
             return await interaction.followup.send(embed=error,ephemeral=True)
 
         if db.wallet_exist(interaction.user.id,'vodafone',wallet):
             embed = Embed(
-                title='Wallet Already Exist',
-                description='This wallet is already registered to your account',
+                title='المحفظة موجودة بالفعل',
+                description='المحفظة دي متسجلة بالفعل علي حسابك',
             )
             return await interaction.followup.send(embed=embed,ephemeral=True)
 
         embed = Embed(
-            title='New Wallet Registered 🆕',
-            description=f'**Vodafone Cash** {EMOJIS['vodafone']} regsitered as',
+            title='تم تسجيل محفظة جديدة 🆕',
+            description=f'**Vodafone Cash** {EMOJIS['vodafone']} متسجلة ك',
             color=0x038c07
         )
         embed.add_field(name='Vodafone Cash Number',value=f'```{wallet}```')
@@ -41,33 +41,33 @@ class Vodafone(Modal):
 
 class Instapay(Modal):
     def __init__(self):
-        super().__init__(title='Instpay')
+        super().__init__(title='Instapay')
         self.add_item(
             TextInput(label='Instapay ID',style=TextStyle.short,required=True)
         )
     
-    async def callback(self, interaction: Interaction):
+    async def on_submit(self, interaction: Interaction):
         wallet = self.children[0].value
-        await interaction.response.defer(ephemeral=True)
+        await interaction.response.send_message('...يتم حفظ رقم المحفظة',ephemeral=True)
 
         if not check_wallet_type('instapay',wallet):
             error = Embed(
-                title='❌ Invalid ID',
-                description='Make sure to attach **@instapay** at the end of ur instapay ID',
+                title='❌ عنوان انستا غير صالح',
+                description='اتأكد انك تسجل المحفظة كالينك من تطبيق انستا باي',
                 color=0xE80000
             )
             return await interaction.followup.send(embed=error,ephemeral=True)
 
         if db.wallet_exist(interaction.user.id,'instapay',wallet):
             embed = Embed(
-                title='Wallet Already Exist',
-                description='This wallet is already registered to your account',
+                title='المحفظة موجودة بالفعل',
+                description='المحفظة دي متسجلة بالفعل علي حسابك',
             )
             return await interaction.followup.send(embed=embed,ephemeral=True)
 
         embed = Embed(
-            title='New Wallet Registered 🆕',
-            description=f'**Instapay ID** {EMOJIS['instapay']} regsitered as',
+            title='تم تسجيل محفظة جديدة 🆕',
+            description=f'**Instapay ID** {EMOJIS['instapay']} متسجلة ك',
             color=0x038c07
         )
         embed.add_field(name='Instapay ID',value=f'```{wallet}```')
@@ -85,15 +85,15 @@ class Visa(Modal):
             TextInput(label='Card Holder Name',style=TextStyle.short,required=True)
         )
     
-    async def callback(self, interaction: Interaction):
+    async def on_submit(self, interaction: Interaction):
         wallet = []
         wallet.append(self.children[0].value)
         await interaction.response.defer(ephemeral=True)
 
         if not check_wallet_type('visa',wallet[0]):
             error = Embed(
-                title='❌ Invalid Card Number',
-                description='Make sure to enter a valid card number',
+                title='❌ رقم كارت غير صالح',
+                description='اتأكد انك تحط رقم كارت صحيح',
                 color=0xE80000
             )
             return await interaction.followup.send(embed=error,ephemeral=True)
@@ -101,14 +101,14 @@ class Visa(Modal):
         wallet.append(self.children[1].value)    
         if db.wallet_exist(interaction.user.id,'visa',wallet):
             embed = Embed(
-                title='Wallet Already Exist',
-                description='This wallet is already registered to your account',
+                title='المحفظة موجودة بالفعل',
+                description='المحفظة دي متسجلة بالفعل علي حسابك',
             )
             return await interaction.followup.send(embed=embed,ephemeral=True)
 
         embed = Embed(
-            title='New Wallet Registered 🆕',
-            description=f'**Visa Card** {EMOJIS['visa']} regsitered as',
+            title='تم تسجيل محفظة جديدة 🆕',
+            description=f'**Visa Card** {EMOJIS['visa']} متسجلة ك',
             color=0x038c07
         )
         embed.add_field(name='Holder Name',value=f'```{wallet[1]}```')

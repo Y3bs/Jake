@@ -172,75 +172,162 @@ def extract_view_data_from_message(message, category_name):
         if not view_type:
             return None
         
-        # Extract user ID from message content (looking for <@UID>)
+        # Initialize variables
         uid = None
-        try:
-            # Try to get from message content first
-            if message.content:
-                match = re.search(r'<@(\d+)>', message.content)
-                if match:
-                    uid = int(match.group(1))
-            
-            # If not in content, try to extract from components
-            if not uid and message.components:
-                # Look for TextDisplay with mention
-                for component in message.components:
-                    if hasattr(component, 'children'):
-                        for child in component.children:
-                            if hasattr(child, 'content') and '<@' in str(child.content):
-                                match = re.search(r'<@(\d+)>', str(child.content))
-                                if match:
-                                    uid = int(match.group(1))
-                                    break
-                    if uid:
-                        break
-        except:
-            uid = None
-        
-        # Extract account content - this is CRITICAL
         acc_content = ""
+        game = ""  # Default fallback
+        
         try:
-            # Look for account content in TextDisplay components
+            # Get all components from the message
             if message.components:
+                # First, collect all text displays from components
+                text_displays = []
+                
                 for component in message.components:
                     if hasattr(component, 'children'):
                         for child in component.children:
                             if hasattr(child, 'content'):
-                                content_str = str(child.content)
-                                # Look for account content (code blocks or specific patterns)
-                                if '```' in content_str:
-                                    # Extract from code blocks
-                                    matches = re.findall(r'```(.*?)```', content_str, re.DOTALL)
-                                    if matches:
-                                        acc_content = matches[0].strip()
-                                        break
-                                elif content_str and len(content_str) > 20:
-                                    # Might be account content without code blocks
-                                    # Check if it looks like account info (has newlines or specific patterns)
-                                    if '\n' in content_str or ':' in content_str:
-                                        acc_content = content_str
-                                        break
-                    if acc_content:
-                        break
-        except:
+                                content = str(child.content)
+                                # Store with component index for debugging
+                                text_displays.append({
+                                    'content': content,
+                                    'type': type(child).__name__
+                                })
+                
+                # Process text displays based on view type
+                if view_type == "pending":
+                    # For pending views, structure is:
+                    # 1. User mention: "# <@UID>"
+                    # 2. Game title: "## EMOJI GAME_NAME"
+                    # 3. Separator
+                    # 4. Account content: "```account data```"
+                    
+                    for i, item in enumerate(text_displays):
+                        content = item['content']
+                        
+                        # Extract user ID (first item with mention)
+                        if not uid and '<@' in content and content.startswith('# '):
+                            match = re.search(r'<@(\d+)>', content)
+                            if match:
+                                uid = int(match.group(1))
+                                # print(f"    ✅ Extracted UID: {uid}")
+                        
+                        # Extract game name (item with ## prefix)
+                        elif not game and content.startswith('##'):
+                            # Remove the ## and any emoji
+                            game_text = re.sub(r'^##\s*', '', content)
+                            # Remove custom emoji tags
+                            game_text = re.sub(r'<:[a-zA-Z0-9_]+:\d+>', '', game_text)
+                            # Extract game name (first word after cleaning)
+                            game_match = re.search(r'([A-Za-z0-9]+)', game_text.strip())
+                            if game_match:
+                                game_name = game_match.group(1).upper()
+                                # Map to game keys
+                                game_map = {
+                                    'BO7': 'bo7',
+                                    'OW2': 'ow2', 
+                                    'RIVALS': 'rivals',
+                                    'BATTLEFIELD6': 'battlefield6',
+                                    'BF6': 'battlefield6',
+                                    'WARZONE': 'warzone',
+                                    'WZ': 'warzone',
+                                    'VALORANT': 'valorant',
+                                }
+                                game = game_map.get(game_name, 'bo7')
+                                # print(f"    ✅ Extracted game: {game}")
+                        
+                        # Extract account content (look for code blocks or multi-line content)
+                        elif not acc_content:
+                            # Check for code blocks
+                            if '```' in content:
+                                matches = re.findall(r'```(.*?)```', content, re.DOTALL)
+                                if matches and matches[0].strip() and matches[0].strip() != "No account content provided":
+                                    acc_content = matches[0].strip()
+                                    # print(f"    ✅ Extracted account content from code block ({len(acc_content)} chars)")
+                            
+                            # Also check for non-code block account content
+                            elif not acc_content and i > 2:  # Account content usually appears later
+                                # Check if it looks like account data (has newlines and common patterns)
+                                if '\n' in content and len(content.strip()) > 20:
+                                    # Common account patterns
+                                    account_patterns = [':', 'username', 'password', 'email', 'account']
+                                    if any(pattern in content.lower() for pattern in account_patterns):
+                                        acc_content = content.strip()
+                                        # print(f"    ✅ Extracted account content without code blocks ({len(acc_content)} chars)")
+                
+                else:  # For mark_sold and cash_in views
+                    # Structure is:
+                    # 1. User mention: "# <@UID>"
+                    # 2. Account content: "```account data```"
+                    
+                    for i, item in enumerate(text_displays):
+                        content = item['content']
+                        
+                        # Extract user ID
+                        if not uid and '<@' in content and content.startswith('# '):
+                            match = re.search(r'<@(\d+)>', content)
+                            if match:
+                                uid = int(match.group(1))
+                                # print(f"    ✅ Extracted UID: {uid}")
+                        
+                        # Extract account content
+                        elif not acc_content:
+                            # Check for code blocks
+                            if '```' in content:
+                                matches = re.findall(r'```(.*?)```', content, re.DOTALL)
+                                if matches and matches[0].strip() and matches[0].strip() != "No account content provided":
+                                    acc_content = matches[0].strip()
+                                    # print(f"    ✅ Extracted account content ({len(acc_content)} chars)")
+                            
+                            # Also check for multi-line content that looks like account data
+                            elif not acc_content and i > 0 and '\n' in content:
+                                if ':' in content or 'username' in content.lower() or 'password' in content.lower():
+                                    acc_content = content.strip()
+                                    # print(f"    ✅ Extracted account content without code blocks ({len(acc_content)} chars)")
+            
+            # Fallback: Try to extract from message content if not found in components
+            if not acc_content and message.content:
+                if '```' in message.content:
+                    matches = re.findall(r'```(.*?)```', message.content, re.DOTALL)
+                    if matches and matches[0].strip():
+                        acc_content = matches[0].strip()
+                        # print(f"    🔄 Extracted account content from message content ({len(acc_content)} chars)")
+            
+            if not uid and message.content:
+                uid_match = re.search(r'<@(\d+)>', message.content)
+                if uid_match:
+                    uid = int(uid_match.group(1))
+                    # print(f"    🔄 Extracted UID from message content: {uid}")
+        
+        except Exception as e:
+            print(f"    ⚠️ Error extracting from components: {e}")
+        
+        # Final fallback for game extraction from channel name (only for pending)
+        if view_type == "pending" and game == "bo7":
+            try:
+                channel_name = message.channel.name.lower()
+                if "bo7" in channel_name or "black ops" in channel_name or "cod" in channel_name:
+                    game = "bo7"
+                elif "ow2" in channel_name or "overwatch" in channel_name:
+                    game = "ow2"
+                elif "rivals" in channel_name:
+                    game = "rivals"
+                elif "bf6" in channel_name or "battlefield" in channel_name:
+                    game = "battlefield6"
+                elif "wz" in channel_name or "warzone" in channel_name:
+                    game = "warzone"
+                elif "val" in channel_name or "valorant" in channel_name:
+                    game = "valorant"
+            except:
+                pass
+        
+        # Clean up any placeholder text
+        if acc_content == "No account content provided" or acc_content == "```No account content provided```":
             acc_content = ""
         
-        # Extract game type from channel name
-        game = "bo7"  # Default
-        try:
-            channel_name = message.channel.name.lower()
-            if "bo7" in channel_name or "black ops" in channel_name:
-                game = "bo7"
-            elif "ow2" in channel_name or "overwatch" in channel_name:
-                game = "ow2"
-            elif "rivals" in channel_name:
-                game = "rivals"
-            elif "bf6" in channel_name or "battlefield" in channel_name:
-                game = "battlefield6"
-            elif "wz" in channel_name or "warzone" in channel_name:
-                game = "warzone"
-        except:
-            game = "bo7"
+        # Debug output
+        if view_type == "pending":
+            print(f"    📦 Extracted: UID={uid}, Game={game}, AccLength={len(acc_content) if acc_content else 0}")
         
         return {
             "type": view_type,
@@ -337,7 +424,7 @@ async def on_ready():
         from cogs.setup import SetupV2
     
         client.add_view(Accs(None))
-        client.add_view(Pending(None, None, None, None))
+        client.add_view(Pending(None, None, None, 'bo7'))  # Updated to have a default game
         client.add_view(MarkSoldLayout(None, None, None))
         client.add_view(CashInLayout(None, None, None))
         client.add_view(HelpV2())

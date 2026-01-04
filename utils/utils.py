@@ -8,7 +8,7 @@ import re
 EMOJIS = {
     # games
     'rivals': '<:MarvelRivals:1437768326733627494>',
-    'bo7': '<:Warzone:1437768013981024348>',
+    'bo7': '<:bo7:1450430203204472957>',
     'valorant': '<:valorant:1437768016841412668>',
     'ow2':'<:ow2:1437768015285452921>',
     'battlefield6':'<:bf6:1437768012391252108>',
@@ -76,10 +76,10 @@ async def move_channel(channel,category_name,emoji,color,title,desc):
 
 statuses = cycle([
     Game("💸 Selling accounts"),
-    Activity(type=ActivityType.listening, name="customers"),
+    Activity(type=ActivityType.listening, name="Customers 🛍️"),
     Activity(type=ActivityType.watching, name="📦 Orders come & go"),
     Game("⛔ Handling bans"),
-    Activity(type=ActivityType.watching, name="earnings grow 💰"),
+    Activity(type=ActivityType.watching, name="Earnings grow 💰"),
     Activity(type=ActivityType.listening,name='Auto saving files 🗃️'),
     Game("v4.0")
 ])
@@ -102,7 +102,7 @@ def check_wallet_type(select:str,type: str):
         if not type.startswith('01') or type[2] not in num or not type[3:].isdigit():
             return False
     if select == 'instapay':
-        if not type.endswith('@instapay'):
+        if not type.startswith('https://ipn.eg'):
             return False
     if select == 'visa':
         if not type.isdigit():

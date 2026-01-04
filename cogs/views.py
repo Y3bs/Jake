@@ -1,10 +1,36 @@
+from email import message
 from typing import Text
 from discord import ButtonStyle,Button,Interaction, SelectOption
 from discord.ui import ActionRow, Container, LayoutView, Section, Separator, View,Button,Modal,TextInput,button, TextDisplay, Select
-from utils.utils import EMOJIS, move_channel,get_user_id
-from cogs.game_modals import OW2, Bo7, SingularityBo7, BF6, Warzone, Rivals
+from utils.utils import EMOJIS,move_channel,get_user_id
+from cogs.game_modals import OW2, Bo7, SingularityBo7, BF6, Valorant, Warzone, Rivals
 import utils.database as db
 import re
+
+def create_banned_callback(view_instance):
+    async def _banned_on_click(interaction: Interaction):
+        msg = interaction.message
+        channel = interaction.channel
+        category_name = "Banned ⛔"
+        emoji = "⛔"
+        color = 0xE80000
+        title = "Banned ⛔"
+        desc = 'الاكونت اتبند ! ربنا يعوض عليك يا برو'
+        try:
+            await move_channel(channel, category_name, emoji, color, title, desc)
+        except Exception:
+            pass
+        # Edit message with LayoutView: Part 1 = mention, Part 2 = desc
+        banned_view = LayoutView()
+        banned_container = Container()
+        banned_container.add_item(TextDisplay(f'# <@{view_instance.uid}>'))
+        banned_container.add_item(Separator())
+        banned_container.add_item(TextDisplay(desc))
+        banned_view.add_item(banned_container)
+        await msg.edit(view=banned_view)
+        await interaction.response.send_message("gg go next 😥", ephemeral=True)
+        db.log_account(view_instance.uid, 'banned')
+    return _banned_on_click
 
 # Helper function to extract user ID from mention text
 def extract_user_id_from_text(text):
@@ -64,7 +90,7 @@ class Bo7FinishSelect(Select):
             )
 
 class Pending(LayoutView):
-    def __init__(self,guild_id,uid,acc,game):
+    def __init__(self, guild_id, uid, acc, game):
         super().__init__(timeout=None)
         self.guild_id = guild_id
         self.uid = uid
@@ -78,9 +104,16 @@ class Pending(LayoutView):
         user = TextDisplay(user_mention_text)
         container.add_item(user)
         container.add_item(Separator())
+        # NEW PART: Game title with emoji from utils.py
+        game_display_name = self._get_game_display_name(game)
+        game_emoji = self._get_game_emoji(game)
+        game_title = TextDisplay(f'## {game_emoji} {game_display_name}')
+        container.add_item(game_title)
+        
+        container.add_item(Separator())
         
         # Part 2: text and a button on the same line
-        finished_btn = Button(label='خلصت الاكونت', style=ButtonStyle.gray,emoji='🏁', custom_id='pending_finished')
+        finished_btn = Button(label='خلصت الاكونت', style=ButtonStyle.gray, emoji='🏁', custom_id='pending_finished')
         async def _finished_on_click(interaction: Interaction):
             await self.finished_callback(finished_btn, interaction)
 
@@ -100,11 +133,38 @@ class Pending(LayoutView):
         container.add_item(Separator())
 
         # Part 4: text and a red button on the same line
-        part4_row = Section(accessory=Button(label='اتبند', style=ButtonStyle.red, emoji='⛔', custom_id='pending_banned'))
+        banned_btn = Button(label='اتبند', style=ButtonStyle.red, emoji='⛔', custom_id='pending_banned')
+        banned_btn.callback = create_banned_callback(self)  
+        part4_row = Section(accessory=banned_btn)
         part4_row.add_item(TextDisplay('لو اتبند'))
         container.add_item(part4_row)
 
         self.add_item(container)
+    
+    def _get_game_display_name(self, game):
+        """Convert game key to display name"""
+        game_names = {
+            'bo7': 'BO7',
+            'ow2': 'OW2',
+            'rivals': 'RIVALS',
+            'battlefield6': 'BATTLEFIELD6',
+            'warzone': 'WARZONE',
+            'valorant': 'VALORANT',
+        }
+        return game_names.get(game, game.upper())
+
+    def _get_game_emoji(self, game):
+        """Get appropriate emoji for each game from utils.py EMOJIS"""
+        # Map game parameter to EMOJIS keys
+        emoji_map = {
+            'bo7': EMOJIS.get('bo7', '🎮'),
+            'ow2': EMOJIS.get('ow2', '🔫'),
+            'rivals': EMOJIS.get('rivals', '⚔️'),
+            'battlefield6': EMOJIS.get('battlefield6', '🎖️'),
+            'warzone': EMOJIS.get('wz', '☣️'),  
+            'valorant': EMOJIS.get('valorant', '💥')
+        }
+        return emoji_map.get(game, EMOJIS.get('bo7', '🎮'))  # Default to BO7 emoji
 
     async def finished_callback(self, button : Button, interaction: Interaction):
         if self.game == 'bo7':
@@ -159,6 +219,16 @@ class Pending(LayoutView):
                 original_content=interaction.message.content,
                 uid=self.uid,
                 acc=self.acc
+                )
+            )
+        elif self.game == 'valorant':
+            await interaction.response.send_modal(
+                Valorant(
+                    guild_id=self.guild_id,
+                    parent_message=interaction.message,
+                    original_content=interaction.message.content,
+                    uid=self.uid,
+                    acc=self.acc
                 )
             )
 
@@ -296,46 +366,24 @@ class MarkSoldLayout(LayoutView):
             has_any = bool(visa_data or vodafone_data or instapay_data)
             if has_any:
                 container.add_item(Separator())
-                container.add_item(TextDisplay('المحافظ المسجلة'))
+                container.add_item(TextDisplay('💳 **المحافظ المسجلة**'))
                 if visa_data:
                     for card in visa_data:
                         holder = card.get('holder name', '') if isinstance(card, dict) else ''
                         number = card.get('number', '') if isinstance(card, dict) else ''
-                        container.add_item(TextDisplay(f"💳 {holder} — {number}"))
+                        container.add_item(TextDisplay(f"{EMOJIS['visa']} **Visa** ```{holder} — {number}```"))
                 if vodafone_data:
                     for num in vodafone_data:
-                        container.add_item(TextDisplay(f"📱 {num}"))
+                        container.add_item(TextDisplay(f"{EMOJIS['vodafone']} **Vodafone Cash** ```{num}```"))
                 if instapay_data:
                     for num in instapay_data:
-                        container.add_item(TextDisplay(f"🆔 {num}"))
+                        container.add_item(TextDisplay(f"{EMOJIS['instapay']} **Instapay** ```{num}```"))
 
         container.add_item(Separator())
 
         # Part 4: banned option
         banned_btn = Button(label='اتبند', style=ButtonStyle.red,emoji='⛔', custom_id='marksold_banned')
-        async def _banned_on_click(interaction: Interaction):
-            msg = interaction.message
-            channel = interaction.channel
-            category_name = "Banned ⛔"
-            emoji = "⛔"
-            color = 0xE80000
-            title = "Banned ⛔"
-            desc = 'الاكونت اتبند ! ربنا يعوض عليك يا برو شوفلك'
-            try:
-                await move_channel(channel, category_name, emoji, color, title, desc)
-            except Exception:
-                pass
-            # Edit message with LayoutView: Part 1 = mention, Part 2 = desc
-            banned_view = LayoutView()
-            banned_container = Container()
-            banned_container.add_item(TextDisplay(f'# <@{self.uid}>'))
-            banned_container.add_item(Separator())
-            banned_container.add_item(TextDisplay(desc))
-            banned_view.add_item(banned_container)
-            await msg.edit(view=banned_view)
-            await interaction.response.send_message("gg go next 😥", ephemeral=True)
-            db.log_account(self.uid, 'banned')
-        banned_btn.callback = _banned_on_click
+        banned_btn.callback = create_banned_callback(self)  # Use helper function
         part4_row = Section(accessory=banned_btn)
         part4_row.add_item(TextDisplay('لو اتبند'))
         container.add_item(part4_row)
@@ -386,46 +434,24 @@ class CashInLayout(LayoutView):
             has_any = bool(visa_data or vodafone_data or instapay_data)
             if has_any:
                 container.add_item(Separator())
-                container.add_item(TextDisplay('المحافظ المسجلة'))
+                container.add_item(TextDisplay('💳 **المحافظ المسجلة**'))
                 if visa_data:
                     for card in visa_data:
                         holder = card.get('holder name', '') if isinstance(card, dict) else ''
                         number = card.get('number', '') if isinstance(card, dict) else ''
-                        container.add_item(TextDisplay(f"💳 {holder} — {number}"))
+                        container.add_item(TextDisplay(f"{EMOJIS['visa']} **Visa** ```{holder} — {number}```"))
                 if vodafone_data:
                     for num in vodafone_data:
-                        container.add_item(TextDisplay(f"📱 {num}"))
+                        container.add_item(TextDisplay(f"{EMOJIS['vodafone']} **Vodafone Cash** ```{num}```"))
                 if instapay_data:
                     for num in instapay_data:
-                        container.add_item(TextDisplay(f"🆔 {num}"))
+                        container.add_item(TextDisplay(f"{EMOJIS['instapay']} **Instapay** ```{num}```"))
 
         container.add_item(Separator())
 
         # Part 4: banned option
-        banned_btn = Button(label='اتبند', style=ButtonStyle.red,emoji='⛔', custom_id='cashin_banned')
-        async def _banned_on_click(interaction: Interaction):
-            msg = interaction.message
-            channel = interaction.channel
-            category_name = "Banned ⛔"
-            emoji = "⛔"
-            color = 0xE80000
-            title = "Banned ⛔"
-            desc = 'الاكونت اتبند ! ربنا يعوض عليك يا برو شوفلك'
-            try:
-                await move_channel(channel, category_name, emoji, color, title, desc)
-            except Exception:
-                pass
-            # Edit message with LayoutView: Part 1 = mention, Part 2 = desc
-            banned_view = LayoutView()
-            banned_container = Container()
-            banned_container.add_item(TextDisplay(f'# <@{self.uid}>'))
-            banned_container.add_item(Separator())
-            banned_container.add_item(TextDisplay(desc))
-            banned_view.add_item(banned_container)
-            await msg.edit(view=banned_view)
-            await interaction.response.send_message("gg go next 😥", ephemeral=True)
-            db.log_account(self.uid, 'banned')
-        banned_btn.callback = _banned_on_click
+        banned_btn = Button(label='اتبند', style=ButtonStyle.red,emoji='⛔', custom_id='marksold_banned')
+        banned_btn.callback = create_banned_callback(self)  # Use helper function
         part4_row = Section(accessory=banned_btn)
         part4_row.add_item(TextDisplay('لو اتبند'))
         container.add_item(part4_row)

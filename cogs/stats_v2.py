@@ -54,7 +54,7 @@ class StatsCog(commands.Cog):
     def __init__(self, client):
         self.client = client
 
-    @app_commands.command(name='me_v2', description="يعرض أرباحك وعدد الحسابات المباعة والمحظورة")
+    @app_commands.command(name='me', description="يعرض أرباحك وعدد الحسابات المباعة والمحظورة")
     async def stats_v2(self, interaction: Interaction):
         await interaction.response.defer(ephemeral=True)
         

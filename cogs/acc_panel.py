@@ -122,6 +122,7 @@ class Games(Select):
             SelectOption(label='Marvel Rivals', value='rivals', emoji=EMOJIS['rivals']),
             SelectOption(label='Battlefield 6', value='battlefield6', emoji=EMOJIS['battlefield6']),
             SelectOption(label='Warzone', value='warzone', emoji=EMOJIS['wz']),
+            SelectOption(label='Valorant', value='valorant',emoji=EMOJIS['valorant'])
         ]
         super().__init__(
             placeholder="Select your game...",
