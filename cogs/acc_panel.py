@@ -1,8 +1,8 @@
 import platform
 import discord
 from discord.ext import commands
-from discord import Color, TextStyle, app_commands
-from discord.ui import File, FileUpload, Label, LayoutView, Container, Modal, Separator, TextDisplay, ActionRow, Select, TextInput, Button, View
+from discord import ButtonStyle, Color, TextStyle, app_commands
+from discord.ui import File, FileUpload, Label, LayoutView, Container, Modal, Section, Separator, TextDisplay, ActionRow, Select, TextInput, Button, View
 from discord import Embed, Interaction, SelectOption
 from utils.utils import EMOJIS
 from cogs.views import Pending
@@ -179,14 +179,79 @@ class Accs(LayoutView):
         self.select_menu = Games(self.guild_id)
         self.action_row = ActionRow(self.select_menu)
         
+        # Stats button - UPDATED
+        self.stats_btn = Button(label='احصائياتي', style=ButtonStyle.green, emoji='📊', custom_id='stats_btn')
+        self.stats_btn.callback = self.stats_callback  
+        
+        self.stats_title = TextDisplay('# الاحصائيات 📊')
+        self.stats_desc = TextDisplay('احصائيات الشهر الحالي')
+        self.stats_section = ActionRow(self.stats_btn)
+
         # Create container with the action row
         self.container = Container()
         self.container.add_item(self.title)
         self.container.add_item(self.sep)
         self.container.add_item(self.desc)
         self.container.add_item(self.action_row)
+
+        self.container.add_item(self.sep)
+        self.container.add_item(self.stats_title)
+        self.container.add_item(self.stats_desc)
+        self.container.add_item(self.stats_section)
         # Add container to the layout
         self.add_item(self.container)
+    
+    async def stats_callback(self, interaction: Interaction):
+        """Callback for stats button - shows current month statistics"""
+        await interaction.response.defer(ephemeral=True)
+        
+        try:
+            # Get current month stats using the helper function
+            from utils.utils import get_current_month_stats, format_monthly_stats_message
+            
+            # Get stats for current user
+            stats_data = get_current_month_stats(interaction.user.id)
+            
+            # Create a LayoutView for displaying stats
+            stats_view = LayoutView(timeout=None)
+            container = Container(accent_color=discord.Color.from_rgb(0, 230, 230))
+            
+            if stats_data.get('error'):
+                # Error state
+                if stats_data.get('registered') == False:
+                    container.add_item(TextDisplay(content="# ❌ التسجيل مطلوب"))
+                    container.add_item(Separator())
+                    container.add_item(TextDisplay(content="أنت غير مسجل في قاعدة البيانات. استخدم `/register` أولاً!"))
+                elif stats_data.get('no_history'):
+                    container.add_item(TextDisplay(content="# 📊 لا يوجد تاريخ للحسابات"))
+                    container.add_item(Separator())
+                    container.add_item(TextDisplay(content="ليس لديك أي تاريخ للحسابات بعد!\nابدأ ببيع الحسابات لترى إحصائياتك هنا."))
+                else:
+                    container.add_item(TextDisplay(content="# ❌ خطأ في الإحصائيات"))
+                    container.add_item(Separator())
+                    container.add_item(TextDisplay(content=stats_data.get('message', 'حدث خطأ غير معروف.')))
+            else:
+                # Success state - format the message
+                stats_message = format_monthly_stats_message(stats_data, interaction.user.mention)
+                container.add_item(TextDisplay(content=stats_message))
+                
+                # Add a footer with total accounts this month
+                if stats_data['total_current_month'] > 0:
+                    footer_text = f"**إجمالي الحسابات هذا الشهر:** {stats_data['total_current_month']} حساب"
+                    container.add_item(Separator())
+                    container.add_item(TextDisplay(content=footer_text))
+            
+            stats_view.add_item(container)
+            await interaction.followup.send(view=stats_view, ephemeral=True)
+            
+        except Exception as e:
+            # Fallback error handling
+            error_view = LayoutView()
+            error_container = Container(accent_color=discord.Color.red())
+            error_container.add_item(TextDisplay(content="# ❌ خطأ في جلب الإحصائيات"))
+            error_container.add_item(TextDisplay(content=f"حدث خطأ: {str(e)}"))
+            error_view.add_item(error_container)
+            await interaction.followup.send(view=error_view, ephemeral=True)
 
 class Panel(commands.Cog):
     def __init__(self,client):

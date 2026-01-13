@@ -1,47 +1,9 @@
-from email import message
-from typing import Text
+import discord,re
 from discord import ButtonStyle,Button,Interaction, SelectOption
-from discord.ui import ActionRow, Container, LayoutView, Section, Separator, View,Button,Modal,TextInput,button, TextDisplay, Select
-from utils.utils import EMOJIS,move_channel,get_user_id
+from discord.ui import ActionRow, Container, Label, LayoutView, Section, Separator, View,Button,Modal,TextInput, TextDisplay, Select
+from utils.utils import EMOJIS, copy_content,move_channel,create_banned_callback,extract_user_id_from_text
 from cogs.game_modals import OW2, Bo7, SingularityBo7, BF6, Valorant, Warzone, Rivals
 import utils.database as db
-import re
-
-def create_banned_callback(view_instance):
-    async def _banned_on_click(interaction: Interaction):
-        msg = interaction.message
-        channel = interaction.channel
-        category_name = "Banned ⛔"
-        emoji = "⛔"
-        color = 0xE80000
-        title = "Banned ⛔"
-        desc = 'الاكونت اتبند ! ربنا يعوض عليك يا برو'
-        try:
-            await move_channel(channel, category_name, emoji, color, title, desc)
-        except Exception:
-            pass
-        # Edit message with LayoutView: Part 1 = mention, Part 2 = desc
-        banned_view = LayoutView()
-        banned_container = Container()
-        banned_container.add_item(TextDisplay(f'# <@{view_instance.uid}>'))
-        banned_container.add_item(Separator())
-        banned_container.add_item(TextDisplay(desc))
-        banned_view.add_item(banned_container)
-        await msg.edit(view=banned_view)
-        await interaction.response.send_message("gg go next 😥", ephemeral=True)
-        db.log_account(view_instance.uid, 'banned')
-    return _banned_on_click
-
-# Helper function to extract user ID from mention text
-def extract_user_id_from_text(text):
-    """Extract user ID from mention text like '# <@123456789>'"""
-    try:
-        if not text:
-            return None
-        match = re.search(r'<@(\d+)>', str(text))
-        return int(match.group(1)) if match else None
-    except:
-        return None
 
 class Bo7FinishSelect(Select):
     def __init__(self, pending_view: 'Pending',guild_id,parent_message,original_content,uid,acc):
@@ -128,8 +90,15 @@ class Pending(LayoutView):
             # Clean the acc content - remove any existing code block markers
             clean_acc = str(acc).replace('```', '').strip()
             container.add_item(TextDisplay(f'```{clean_acc}```'))
+            copy_btn = Button(label='نسخ',style=ButtonStyle.blurple, emoji='🖨️',custom_id='copy_btn')
+            async def _copy_on_click(interaction: Interaction):
+                await copy_content(interaction,clean_acc)
+            copy_btn.callback = _copy_on_click
+            part3_row = ActionRow(copy_btn)
+            container.add_item(part3_row)
         else:
             container.add_item(TextDisplay('```No account content provided```'))
+        
         container.add_item(Separator())
 
         # Part 4: text and a red button on the same line
@@ -180,7 +149,7 @@ class Pending(LayoutView):
         else:
             await self._open_game_modal(interaction)
 
-    async def _open_game_modal(self, interaction: Interaction, camo_type: str | None = None):
+    async def _open_game_modal(self, interaction: Interaction):
         if self.game == 'ow2':
             await interaction.response.send_modal(
                 OW2(
@@ -232,84 +201,6 @@ class Pending(LayoutView):
                 )
             )
 
-class Money(Modal):
-    def __init__(self,guild_id,msg,uid,acc: str | None = None):
-        super().__init__(title='Price 🏷️')
-        self.add_item(TextInput(label='Price',placeholder='حط تمن الاكونت هنا'))
-        self.guild_id = guild_id
-        self.msg = msg
-        self.uid = uid
-        self.acc = acc
-
-    async def on_submit(self, interaction: Interaction):
-        await interaction.response.defer(ephemeral=True)
-        try:
-            price = int(self.children[0].value)
-        except ValueError:
-            return await interaction.followup.send('حط سعر الاكونت كا رقم بس')
-        db.log_account(self.uid,'sold',price)
-        await interaction.followup.send('مليونير مليونير 💸',ephemeral=True)
-        channel = interaction.channel   
-        category_name = "Paid 💰"
-        emoji = "💰"
-        color = 0x10b8c4
-        title = "الكاش وصل يا برو 🤑"
-        desc = f'**Price**\n```{price} L.E```'
-        await move_channel(channel,category_name,emoji,color,title,desc)
-        
-        # Build final view with no buttons, just text (mention, account content, price)
-        final_view = self._build_final_view(price)
-        await self.msg.edit(view=final_view)
-
-    def _build_final_view(self, price: int) -> LayoutView:
-        """Build final view with no buttons, just text: mention, account content, price"""
-        container = Container()
-        
-        # Part 1: user mention - PRESERVED
-        container.add_item(TextDisplay(f'# <@{self.uid}>'))
-        container.add_item(Separator())
-        
-        # Part 2: account content - PRESERVED
-        if self.acc:
-            clean_acc = str(self.acc).replace('```', '').strip()
-            container.add_item(TextDisplay(f'```{clean_acc}```'))
-        
-        # Wallets registered under account content
-        try:
-            data = db.find_player(self.uid)
-        except Exception:
-            data = None
-        if data is not None:
-            wallets = data.get('wallets', {}) if isinstance(data, dict) else {}
-            visa_data = wallets.get('visa', [])
-            vodafone_data = wallets.get('vodafone', [])
-            instapay_data = wallets.get('instapay', [])
-
-            has_any = bool(visa_data or vodafone_data or instapay_data)
-            if has_any:
-                container.add_item(Separator())
-                container.add_item(TextDisplay('المحافظ المسجلة'))
-                if visa_data:
-                    for card in visa_data:
-                        holder = card.get('holder name', '') if isinstance(card, dict) else ''
-                        number = card.get('number', '') if isinstance(card, dict) else ''
-                        container.add_item(TextDisplay(f"💳 {holder} — {number}"))
-                if vodafone_data:
-                    for num in vodafone_data:
-                        container.add_item(TextDisplay(f"📱 {num}"))
-                if instapay_data:
-                    for num in instapay_data:
-                        container.add_item(TextDisplay(f"🆔 {num}"))
-        
-        container.add_item(Separator())
-        
-        # Part 3: price
-        container.add_item(TextDisplay(f'**Price**\n```{price} L.E```'))
-        
-        view = LayoutView()
-        view.add_item(container)
-        return view
-
 class MarkSoldLayout(LayoutView):
     def __init__(self, guild_id, uid: int, acc: str | None = None):
         super().__init__(timeout=None)
@@ -327,18 +218,13 @@ class MarkSoldLayout(LayoutView):
         mark_sold_btn = Button(label='سلمت الاكونت', style=ButtonStyle.blurple, emoji='📦', custom_id='marksold_sold')
         async def _mark_sold_on_click(interaction: Interaction):
             # Move channel to Sold category
-            channel = interaction.channel
-            category_name = "Sold 📦"
-            emoji = "📦"
-            color = 0x038c07
-            title = "الكاش 💰"
-            desc = 'دوس علي الزرار اللي تحت لما فلوس الاكونت توصلك'
-            await move_channel(channel, category_name, emoji, color, title, desc)
+            await move_channel(interaction.channel,"Sold 📦" , "📦")
             
             # Edit message to show "cash in" button
             updated_view = CashInLayout(self.guild_id, self.uid, self.acc)
             await interaction.message.edit(view=updated_view)
             await interaction.response.send_message('تم تسجيل البيع 📦', ephemeral=True)
+            
         mark_sold_btn.callback = _mark_sold_on_click
         part2_row = Section(accessory=mark_sold_btn)
         part2_row.add_item(TextDisplay('الأكونت اتسلم'))
@@ -349,6 +235,12 @@ class MarkSoldLayout(LayoutView):
         if acc:
             clean_acc = str(acc).replace('```', '').strip()
             container.add_item(TextDisplay(f'```{clean_acc}```'))
+            copy_btn = Button(label='نسخ',style=ButtonStyle.blurple, emoji='🖨️')
+            async def _copy_on_click(interaction: Interaction):
+                await copy_content(interaction,clean_acc)
+            copy_btn.callback = _copy_on_click
+            part3_row = ActionRow(copy_btn)
+            container.add_item(part3_row)
         else:
             container.add_item(TextDisplay('```No account content provided```'))
 
@@ -362,7 +254,7 @@ class MarkSoldLayout(LayoutView):
             visa_data = wallets.get('visa', [])
             vodafone_data = wallets.get('vodafone', [])
             instapay_data = wallets.get('instapay', [])
-
+            wallets_data = []
             has_any = bool(visa_data or vodafone_data or instapay_data)
             if has_any:
                 container.add_item(Separator())
@@ -371,14 +263,34 @@ class MarkSoldLayout(LayoutView):
                     for card in visa_data:
                         holder = card.get('holder name', '') if isinstance(card, dict) else ''
                         number = card.get('number', '') if isinstance(card, dict) else ''
-                        container.add_item(TextDisplay(f"{EMOJIS['visa']} **Visa** ```{holder} — {number}```"))
+                        container.add_item(TextDisplay(f"{EMOJIS['visa']} **Visa** ```ansi\n{holder} — [34m{number}[0m```"))
+                        wallets_data.append({
+                            'label':f'{holder} - {number}',
+                            'value':f'{holder}\n{number}',
+                            'emoji': EMOJIS['visa'],
+                        })
                 if vodafone_data:
                     for num in vodafone_data:
-                        container.add_item(TextDisplay(f"{EMOJIS['vodafone']} **Vodafone Cash** ```{num}```"))
+                        container.add_item(TextDisplay(f"{EMOJIS['vodafone']} **Vodafone Cash** ```ansi\n[31m{num}[0m```"))
+                        wallets_data.append({
+                            'label':num,
+                            'value':num,
+                            'emoji':EMOJIS['vodafone']
+                        })
                 if instapay_data:
                     for num in instapay_data:
-                        container.add_item(TextDisplay(f"{EMOJIS['instapay']} **Instapay** ```{num}```"))
-
+                        container.add_item(TextDisplay(f"{EMOJIS['instapay']} **Instapay** ```ansi\n[35m{num}[0m```"))
+                        wallets_data.append({
+                            'label':num,
+                            'value':num,
+                            'emoji':EMOJIS['instapay']
+                        })
+            if wallets_data:
+                options = []
+                for option in wallets_data:
+                    options.append(SelectOption(label=option['label'],value=option['value'],emoji=option['emoji']))
+                copy_payments_row = ActionRow(CopyPayment(options))
+                container.add_item(copy_payments_row)
         container.add_item(Separator())
 
         # Part 4: banned option
@@ -417,6 +329,12 @@ class CashInLayout(LayoutView):
         if acc:
             clean_acc = str(acc).replace('```', '').strip()
             container.add_item(TextDisplay(f'```{clean_acc}```'))
+            copy_btn = Button(label='نسخ',style=ButtonStyle.blurple, emoji='🖨️')
+            async def _copy_on_click(interaction: Interaction):
+                await copy_content(interaction,clean_acc)
+            copy_btn.callback = _copy_on_click
+            part3_row = ActionRow(copy_btn)
+            container.add_item(part3_row)
         else:
             container.add_item(TextDisplay('```No account content provided```'))
 
@@ -430,7 +348,7 @@ class CashInLayout(LayoutView):
             visa_data = wallets.get('visa', [])
             vodafone_data = wallets.get('vodafone', [])
             instapay_data = wallets.get('instapay', [])
-
+            wallets_data = []
             has_any = bool(visa_data or vodafone_data or instapay_data)
             if has_any:
                 container.add_item(Separator())
@@ -439,24 +357,123 @@ class CashInLayout(LayoutView):
                     for card in visa_data:
                         holder = card.get('holder name', '') if isinstance(card, dict) else ''
                         number = card.get('number', '') if isinstance(card, dict) else ''
-                        container.add_item(TextDisplay(f"{EMOJIS['visa']} **Visa** ```{holder} — {number}```"))
+                        container.add_item(TextDisplay(f"{EMOJIS['visa']} **Visa** ```ansi\n{holder} — [34m{number}[0m```"))
+                        wallets_data.append({
+                            'label':f'{holder} - {number}',
+                            'value':f'{holder}\n{number}',
+                            'emoji': EMOJIS['visa'],
+                        })
                 if vodafone_data:
                     for num in vodafone_data:
-                        container.add_item(TextDisplay(f"{EMOJIS['vodafone']} **Vodafone Cash** ```{num}```"))
+                        container.add_item(TextDisplay(f"{EMOJIS['vodafone']} **Vodafone Cash** ```ansi\n[31m{num}[0m```"))
+                        wallets_data.append({
+                            'label':num,
+                            'value':num,
+                            'emoji':EMOJIS['vodafone']
+                        })
                 if instapay_data:
                     for num in instapay_data:
-                        container.add_item(TextDisplay(f"{EMOJIS['instapay']} **Instapay** ```{num}```"))
-
+                        container.add_item(TextDisplay(f"{EMOJIS['instapay']} **Instapay** ```ansi\n[35m{num}[0m```"))
+                        wallets_data.append({
+                            'label':num,
+                            'value':num,
+                            'emoji':EMOJIS['instapay']
+                        })
+            if wallets_data:
+                options = []
+                for option in wallets_data:
+                    options.append(SelectOption(label=option['label'],value=option['value'],emoji=option['emoji']))
+                copy_payments_row = ActionRow(CopyPayment(options))
+                container.add_item(copy_payments_row)
         container.add_item(Separator())
 
         # Part 4: banned option
         banned_btn = Button(label='اتبند', style=ButtonStyle.red,emoji='⛔', custom_id='marksold_banned')
-        banned_btn.callback = create_banned_callback(self)  # Use helper function
+        banned_btn.callback = create_banned_callback(self)  
         part4_row = Section(accessory=banned_btn)
         part4_row.add_item(TextDisplay('لو اتبند'))
         container.add_item(part4_row)
 
         self.add_item(container)
+
+class Money(Modal):
+    def __init__(self,guild_id,msg,uid,acc: str | None = None):
+        super().__init__(title='Price 🏷️')
+        self.add_item(TextInput(label='Price',placeholder='حط تمن الاكونت هنا'))
+        self.method = Label(text = 'Wallet type 💳',component=Method())
+        self.add_item(self.method)
+        self.guild_id = guild_id
+        self.msg = msg
+        self.uid = uid
+        self.acc = acc
+
+    async def on_submit(self, interaction: Interaction):
+        await interaction.response.defer(ephemeral=True)
+        try:
+            price = int(self.children[0].value)
+        except ValueError:
+            return await interaction.followup.send('حط سعر الاكونت كا رقم بس')
+        method = self.method.component.values[0]
+        db.log_account(self.uid,'sold',price)
+        await interaction.followup.send('مليونير مليونير 💸',ephemeral=True)
+        await move_channel(interaction.channel,"Paid 💰","💰")
+        
+        # Build final view with no buttons, just text (mention, account content, price)
+        final_view = self._build_final_view(price,method)
+        await self.msg.edit(view=final_view)
+
+    def _build_final_view(self, price: int,method:str) -> LayoutView:
+        """Build final view with no buttons, just text: mention, account content, price"""
+        container = Container()
+        
+        # Part 1: user mention - PRESERVED
+        container.add_item(TextDisplay(f'# <@{self.uid}>'))
+        container.add_item(Separator())
+        
+        # Part 2: account content - PRESERVED
+        if self.acc:
+            clean_acc = str(self.acc).replace('```', '').strip()
+            container.add_item(TextDisplay(f'```{clean_acc}```'))
+        
+        # Part 3: price
+        container.add_item(TextDisplay(f'**Price**\n```ansi\n[32m {price} [0m L.E 💵```'))
+        
+        # Part 4: Method
+        container.add_item(TextDisplay(f'**Method**\n{EMOJIS[method]} **{method.capitalize()}**'))
+
+        view = LayoutView()
+        view.add_item(container)
+        return view
+
+class Method(Select):
+    def __init__(self):
+        options = [
+            SelectOption(label='فودافون كاش', value='vodafone', emoji=EMOJIS['vodafone']),
+            SelectOption(label='انستاباي', value='instapay', emoji=EMOJIS['instapay']),
+            SelectOption(label='فيزا', value='visa', emoji=EMOJIS['visa'])
+        ]
+        
+        super().__init__(
+            placeholder='اختر نوع المحفظة',
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+    
+    async def callback(self, interaction: Interaction):
+        await interaction.response.send_message(self.values[0])
+
+class CopyPayment(Select):
+    def __init__(self,options):        
+        super().__init__(
+            placeholder='اختار المحفظة اللي عايز تنسخها',
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+    
+    async def callback(self, interaction: Interaction):
+        await interaction.response.send_message(self.values[0],ephemeral=True)
 
 async def setup(client):
     pass

@@ -1,9 +1,11 @@
-import enum
 import discord 
-from discord import Embed,Activity,Game,ActivityType,Message
+from discord import Activity,Game,ActivityType,Message,Interaction
+from discord.ui import LayoutView,Container,TextDisplay,Separator
 from itertools import cycle 
-import asyncio
-import re
+import asyncio, re
+import pandas as pd
+from datetime import datetime
+import utils.database as db
 
 EMOJIS = {
     # games
@@ -66,13 +68,12 @@ EMOJIS = {
     'zaverioperator': '<:zaverioperator:1439307466633380031>'
 }
 
-async def move_channel(channel,category_name,emoji,color,title,desc):
+async def move_channel(channel,category_name,emoji):
     guild = channel.guild
     category = discord.utils.get(guild.categories,name=category_name)
     if category is None:
         category = await guild.create_category(category_name)
     await channel.edit(name=f'{emoji}{channel.name[1:]}',category=category)
-    return Embed(title=title,description=desc,color=color)
 
 statuses = cycle([
     Game("💸 Selling accounts"),
@@ -81,7 +82,7 @@ statuses = cycle([
     Game("⛔ Handling bans"),
     Activity(type=ActivityType.watching, name="Earnings grow 💰"),
     Activity(type=ActivityType.listening,name='Auto saving files 🗃️'),
-    Game("v4.0")
+    Game("v4.1")
 ])
 
 async def cycle_status(client, interval=60):
@@ -101,9 +102,6 @@ def check_wallet_type(select:str,type: str):
         num = '0125'
         if not type.startswith('01') or type[2] not in num or not type[3:].isdigit():
             return False
-    if select == 'instapay':
-        if not type.startswith('https://ipn.eg'):
-            return False
     if select == 'visa':
         if not type.isdigit():
             return False
@@ -119,6 +117,164 @@ def check_wallet_type(select:str,type: str):
             total += n
         return total % 10 == 0
     return True
+
+def get_current_month_stats(user_id):
+    """
+    Get current month statistics for a user without visualization.
+    
+    Args:
+        user_id: Discord user ID
+        
+    Returns:
+        dict: Current month statistics or error message
+    """
+    try:
+        # Get user stats from database
+        user_stats = db.find_player(user_id)
+        
+        # Handle not registered users
+        if not user_stats:
+            return {
+                'error': True,
+                'message': "أنت غير مسجل في قاعدة البيانات. استخدم `/register` أولاً!",
+                'registered': False
+            }
+        
+        # Handle no history
+        if not user_stats.get('history'):
+            return {
+                'error': True,
+                'message': "ليس لديك أي تاريخ للحسابات بعد!\nابدأ ببيع الحسابات لترى إحصائياتك هنا.",
+                'no_history': True
+            }
+        
+        # Get current month and year
+        now = datetime.now()
+        current_month = now.month
+        current_year = now.year
+        
+        # Filter history for current month
+        current_month_history = []
+        for record in user_stats.get('history', []):
+            try:
+                record_time = pd.to_datetime(record.get('time'))
+                if record_time.month == current_month and record_time.year == current_year:
+                    current_month_history.append(record)
+            except:
+                continue
+        
+        # Calculate current month stats
+        sold_current_month = 0
+        banned_current_month = 0
+        earnings_current_month = 0
+        
+        for record in current_month_history:
+            action = record.get('action', '').lower()
+            price = record.get('price', 0)
+            
+            if action == 'sold':
+                sold_current_month += 1
+                earnings_current_month += price
+            elif action == 'banned':
+                banned_current_month += 1
+        
+        # Calculate success rate for current month
+        total_current_month = sold_current_month + banned_current_month
+        success_rate_current_month = 0
+        if total_current_month > 0:
+            success_rate_current_month = (sold_current_month / total_current_month) * 100
+        
+        # Calculate average sale for current month
+        avg_sale_current_month = 0
+        if sold_current_month > 0:
+            avg_sale_current_month = earnings_current_month / sold_current_month
+        
+        # Get total number of wallets
+        wallets_count = len(user_stats.get('wallets', {}))
+        
+        return {
+            'error': False,
+            'sold_current_month': sold_current_month,
+            'banned_current_month': banned_current_month,
+            'earnings_current_month': earnings_current_month,
+            'success_rate_current_month': success_rate_current_month,
+            'avg_sale_current_month': avg_sale_current_month,
+            'wallets_count': wallets_count,
+            'total_current_month': total_current_month,
+            'month_name': now.strftime("%B"),  # Current month name
+            'year': current_year
+        }
+        
+    except Exception as e:
+        return {
+            'error': True,
+            'message': f"فشل في إنشاء الإحصائيات: {str(e)}"
+        }
+
+
+def format_monthly_stats_message(stats_data, user_mention):
+    """
+    Format monthly statistics into a display message.
+    
+    Args:
+        stats_data: Dictionary returned by get_current_month_stats
+        user_mention: Discord user mention string
+        
+    Returns:
+        str: Formatted message
+    """
+    if stats_data.get('error'):
+        return stats_data.get('message', 'حدث خطأ في جلب الإحصائيات.')
+    
+    month_name = stats_data.get('month_name', '')
+    year = stats_data.get('year', '')
+    
+    message = f"## 📊 إحصائيات {month_name} {year}\n"
+    message += f"**للمستخدم:** {user_mention}\n\n"
+    
+    # Current month stats
+    message += "**📈 إحصائيات الشهر الحالي:**\n"
+    message += f"• **💸 مباع هذا الشهر:** {stats_data['sold_current_month']} حساب\n"
+    message += f"• **⛔ محظور هذا الشهر:** {stats_data['banned_current_month']} حساب\n"
+    message += f"• **📦 معدل النجاح:** {stats_data['success_rate_current_month']:.1f}%\n"
+    message += f"• **💰 أرباح هذا الشهر:** {stats_data['earnings_current_month']} ج.م\n"
+    message += f"• **⚖️ متوسط سعر البيع:** {stats_data['avg_sale_current_month']:.1f} ج.م\n"
+    message += f"• **💳 محافظ مسجلة:** {stats_data['wallets_count']}\n"
+    
+    return message
+
+def create_banned_callback(view_instance):
+    async def _banned_on_click(interaction: Interaction):
+        msg = interaction.message
+        channel = interaction.channel
+        try:
+            await move_channel(channel, "Banned ⛔", "⛔")
+        except Exception:
+            pass
+        # Edit message with LayoutView: Part 1 = mention, Part 2 = desc
+        banned_view = LayoutView()
+        banned_container = Container()
+        banned_container.add_item(TextDisplay(f'# <@{view_instance.uid}>'))
+        banned_container.add_item(Separator())
+        banned_container.add_item(TextDisplay('الاكونت اتبند ! ربنا يعوض عليك يا برو'))
+        banned_view.add_item(banned_container)
+        await msg.edit(view=banned_view)
+        await interaction.response.send_message("gg go next 😥", ephemeral=True)
+        db.log_account(view_instance.uid, 'banned')
+    return _banned_on_click
+
+def extract_user_id_from_text(text):
+    """Extract user ID from mention text like '# <@123456789>'"""
+    try:
+        if not text:
+            return None
+        match = re.search(r'<@(\d+)>', str(text))
+        return int(match.group(1)) if match else None
+    except:
+        return None 
+
+async def copy_content(interaction: Interaction,txt):
+    await interaction.response.send_message(txt,ephemeral=True)
 
 def setup(client):
     pass

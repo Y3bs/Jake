@@ -858,7 +858,7 @@ class Warzone(Modal):
                 sale_category = await guild.create_category("For Sale 🏷️")
             try:
                 rfr_status = 'rfr' if rfr_value == 'rfr' else 'norfr'
-                account_name = f'wz-{level}-{rfr_status}-{len(maxed_weapons)}max'
+                account_name = f'wz-{level}-{rfr_status}-{len(maxed_weapons)}-max'
                 await self.parent_message.channel.edit(category=sale_category, name=f"🏷️{account_name}")
             except Exception:
                 pass

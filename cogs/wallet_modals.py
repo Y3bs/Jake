@@ -48,15 +48,7 @@ class Instapay(Modal):
     
     async def on_submit(self, interaction: Interaction):
         wallet = self.children[0].value
-        await interaction.response.send_message('...يتم حفظ رقم المحفظة',ephemeral=True)
-
-        if not check_wallet_type('instapay',wallet):
-            error = Embed(
-                title='❌ عنوان انستا غير صالح',
-                description='اتأكد انك تسجل المحفظة كالينك من تطبيق انستا باي',
-                color=0xE80000
-            )
-            return await interaction.followup.send(embed=error,ephemeral=True)
+        await interaction.response.defer(ephemeral=True)
 
         if db.wallet_exist(interaction.user.id,'instapay',wallet):
             embed = Embed(
