@@ -44,6 +44,9 @@ async def auto_update_views():
         
         # Update channels in account categories
         updated_count += await update_account_channels(guild)
+        
+        # Update Arc Raiders panels
+        updated_count += await update_arcraiders_panels(guild)
     
     print(f"✅ Auto-update complete: {updated_count} views updated")
 
@@ -122,6 +125,92 @@ async def update_account_channels(guild):
                     print(f"    ⚠️ Error in #{channel.name}: {e}")
     
     return updated_count
+
+async def update_arcraiders_panels(guild):
+    """Find and update Arc Raiders panels in the guild"""
+    from utils.storage import get_arcraiders_panel
+    
+    updated_count = 0
+    
+    # Method 1: Check storage for existing panel
+    panel_info = get_arcraiders_panel(guild.id)
+    if panel_info:
+        panel_channel_id = panel_info.get("panel_channel_id")
+        logs_channel_id = panel_info.get("logs_channel_id")
+        
+        if panel_channel_id and logs_channel_id:
+            panel_channel = guild.get_channel(panel_channel_id)
+            logs_channel = guild.get_channel(logs_channel_id)
+            
+            if panel_channel and logs_channel:
+                try:
+                    updated = await update_arcraiders_channel_messages(panel_channel, logs_channel)
+                    if updated > 0:
+                        print(f"    🎯 Updated Arc Raiders panel from storage in #{panel_channel.name}")
+                        updated_count += updated
+                except Exception as e:
+                    print(f"    ⚠️ Error updating Arc Raiders panel: {e}")
+    
+    # Method 2: Search for Arc Raiders category
+    arc_category = discord.utils.get(guild.categories, name="🎯 Arc Raiders")
+    if arc_category:
+        print(f"    🎯 Scanning Arc Raiders category...")
+        
+        # Look for panel and logs channels
+        panel_channel = discord.utils.get(arc_category.text_channels, name="arc-panel")
+        logs_channel = discord.utils.get(arc_category.text_channels, name="logs")
+        
+        if panel_channel and logs_channel:
+            try:
+                updated = await update_arcraiders_channel_messages(panel_channel, logs_channel)
+                if updated > 0:
+                    print(f"      ✅ Updated Arc Raiders panel in #{panel_channel.name}")
+                    updated_count += updated
+            except Exception as e:
+                print(f"      ⚠️ Error updating Arc Raiders panel: {e}")
+    
+    return updated_count
+
+async def update_arcraiders_channel_messages(panel_channel, logs_channel):
+    """Update messages in Arc Raiders panel channel"""
+    updated = 0
+    
+    try:
+        # Get all messages in the panel channel
+        messages = []
+        async for message in panel_channel.history(limit=20):
+            messages.append(message)
+        
+        messages.reverse()  # Process from oldest to newest
+        
+        for message in messages:
+            if message.components:
+                # Check if this looks like an ArcRaiders view
+                is_arcraiders = False
+                
+                # Quick check: Does any component contain "Arc Raiders"?
+                for component in message.components:
+                    if hasattr(component, 'children'):
+                        for child in component.children:
+                            if hasattr(child, 'content') and 'Arc Raiders' in str(child.content):
+                                is_arcraiders = True
+                                break
+                    if is_arcraiders:
+                        break
+                
+                # Update if it's an ArcRaiders panel
+                if is_arcraiders:
+                    from cogs.views import ArcRaiders
+                    new_view = ArcRaiders(logs_channel)
+                    await message.edit(view=new_view)
+                    updated += 1
+                    print(f"        ↪ Refreshed ArcRaiders view")
+                    break  # Usually only one panel per channel
+        
+    except Exception as e:
+        print(f"      ⚠️ Error in #{panel_channel.name}: {e}")
+    
+    return updated
 
 async def update_account_channel_messages(channel, guild_id):
     """Update all messages with views in an account channel"""
@@ -225,8 +314,11 @@ def extract_view_data_from_message(message, category_name):
                                 # Map to game keys
                                 game_map = {
                                     'BO7': 'bo7',
-                                    'OW2': 'ow2', 
+                                    'BLACKOPS7': 'bo7',
+                                    'OW2': 'ow2',
+                                    'OVERWATCH2': 'ow2',
                                     'RIVALS': 'rivals',
+                                    'MARVELRIVALS': 'rivals',
                                     'BATTLEFIELD6': 'battlefield6',
                                     'BF6': 'battlefield6',
                                     'WARZONE': 'warzone',
@@ -303,23 +395,19 @@ def extract_view_data_from_message(message, category_name):
             print(f"    ⚠️ Error extracting from components: {e}")
         
         # Final fallback for game extraction from channel name (only for pending)
-        if view_type == "pending" and game == "bo7":
-            try:
-                channel_name = message.channel.name.lower()
-                if "bo7" in channel_name or "black ops" in channel_name or "cod" in channel_name:
-                    game = "bo7"
-                elif "ow2" in channel_name or "overwatch" in channel_name:
-                    game = "ow2"
-                elif "rivals" in channel_name:
-                    game = "rivals"
-                elif "bf6" in channel_name or "battlefield" in channel_name:
-                    game = "battlefield6"
-                elif "wz" in channel_name or "warzone" in channel_name:
-                    game = "warzone"
-                elif "val" in channel_name or "valorant" in channel_name:
-                    game = "valorant"
-            except:
-                pass
+        channel_name = message.channel.name.lower()
+        if "bo7" in channel_name:
+            game = "bo7"
+        elif "ow2" in channel_name:
+            game = "ow2"
+        elif "rivals" in channel_name:
+            game = "rivals"
+        elif "bf6" in channel_name:
+            game = "battlefield6"
+        elif "wz" in channel_name:
+            game = "warzone"
+        elif "valo" in channel_name:
+            game = "valorant"
         
         # Clean up any placeholder text
         if acc_content == "No account content provided" or acc_content == "```No account content provided```":
@@ -361,7 +449,7 @@ async def update_message_with_data(message, view_data, guild_id):
                 
         elif view_type == "mark_sold":
             if uid:
-                new_view = MarkSoldLayout(guild_id, uid, acc_content)
+                new_view = MarkSoldLayout(guild_id, uid, acc_content,game)
                 await message.edit(view=new_view)
                 return True
             else:
@@ -370,7 +458,7 @@ async def update_message_with_data(message, view_data, guild_id):
                 
         elif view_type == "cash_in":
             if uid:
-                new_view = CashInLayout(guild_id, uid, acc_content)
+                new_view = CashInLayout(guild_id, uid, acc_content,game)
                 await message.edit(view=new_view)
                 return True
             else:
@@ -419,14 +507,15 @@ async def on_ready():
 
         # Register persistent view classes
         from cogs.acc_panel import Accs
-        from cogs.views import CashInLayout, MarkSoldLayout, Pending
+        from cogs.views import CashInLayout, MarkSoldLayout, Pending, ArcRaiders
         from cogs.help import HelpV2
         from cogs.setup import SetupV2
     
         client.add_view(Accs(None))
-        client.add_view(Pending(None, None, None, 'bo7'))  # Updated to have a default game
+        client.add_view(Pending(None, None, None, 'bo7'))  
         client.add_view(MarkSoldLayout(None, None, None))
         client.add_view(CashInLayout(None, None, None))
+        client.add_view(ArcRaiders(None))
         client.add_view(HelpV2())
         client.add_view(SetupV2(None))
 

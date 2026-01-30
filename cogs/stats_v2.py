@@ -57,7 +57,7 @@ class StatsCog(commands.Cog):
     @app_commands.command(name='me', description="يعرض أرباحك وعدد الحسابات المباعة والمحظورة")
     async def stats_v2(self, interaction: Interaction):
         await interaction.response.defer(ephemeral=True)
-        
+        return await interaction.followup.send('هذا الامر متوقف مؤقتا ليتم التعديل عليه')
         uid = interaction.user.id
         user_stats = db.find_player(uid)
         

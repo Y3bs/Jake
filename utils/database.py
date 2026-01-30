@@ -25,8 +25,7 @@ def save_player(id):
                 "vodafone":[],
                 "instapay":[],
                 "visa": []
-            },
-            "history": []
+            }
         }
         db.carrier.players.insert_one(doc)
     except Exception as e:
@@ -93,6 +92,36 @@ def log_account(user_id:int,op:str = None,price:int = None):
             db.carrier.players.update_one({"id":user_id},{"$push":{"history":action_doc}})
     except Exception as e:
         print(f"Error logging account\nError: {e}")
+
+def log_rec(user_id:int, op:str, game_name:str, type:str = 'Fresh', price:int = 0, method:str = None):
+    now = datetime.now().isoformat()
+
+    try:
+        rec_doc = {
+                'id': user_id,
+                'action': op,
+                'game': game_name,
+                'type': type,
+                'price': price,
+                'method': method,
+                'time': now
+            }
+
+        if op == 'banned':
+            db.carrier.players.update_one({"id":user_id},{"$inc":{"banned":1}})
+            db.carrier.records.insert_one(rec_doc)    
+        
+        elif op == 'sold':
+            db.carrier.records.insert_one(rec_doc)
+            player_rec = db.carrier.records.find({"id":user_id,"action":"sold"})
+            total_earn = 0
+            for rec in player_rec:
+                if "price" in rec:
+                    price = rec.get('price',0)
+                    total_earn += price
+            db.carrier.players.update_one({"id":user_id},{"$inc":{"sold":1},"$set":{"earnings":total_earn}})
+    except Exception as e:
+        print(f"Error logging record\nError: {e}")
 
 def avg_sale(user_id:int):
     try:

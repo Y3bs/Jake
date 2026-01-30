@@ -6,7 +6,11 @@
     "panel_channel_id": 1450023973067690016
   },
   "1325056936231571486": {
-    "panel_channel_id": 1459277083720028182
+    "panel_channel_id": 1466777232407134271,
+    "arcraiders_panel": {
+      "panel_channel_id": 1466777597626290318,
+      "logs_channel_id": 1466777599434035366
+    }
   },
   "1457323271111442507": {
     "panel_channel_id": 1457323598267023370

@@ -197,7 +197,7 @@ class Bo7(Modal):
         if self.parent_message is not None:
             try:
                 from cogs.views import MarkSoldLayout  # local import to avoid circular
-                updated_view = MarkSoldLayout(self.guild_id, self.uid, acc=acc_content)
+                updated_view = MarkSoldLayout(self.guild_id, self.uid, acc=acc_content,game='bo7')
                 await self.parent_message.edit(view=updated_view)
             except Exception as e:
                 print(f"Error updating message view: {e}")
@@ -340,7 +340,7 @@ class SingularityBo7(Modal):
         if self.parent_message is not None:
             try:
                 from cogs.views import MarkSoldLayout
-                updated_view = MarkSoldLayout(self.guild_id, self.uid, acc=acc_content)
+                updated_view = MarkSoldLayout(self.guild_id, self.uid, acc=acc_content,game='bo7')
                 await self.parent_message.edit(view=updated_view)
             except Exception as e:
                 print(f"Error updating message view: {e}")
@@ -458,7 +458,7 @@ class OW2(Modal):
         if self.parent_message is not None:
             try:
                 from cogs.views import MarkSoldLayout  # local import to avoid circular
-                updated_view = MarkSoldLayout(self.guild_id, self.uid, acc=acc_content)
+                updated_view = MarkSoldLayout(self.guild_id, self.uid, acc=acc_content,game='ow2')
                 await self.parent_message.edit(view=updated_view)
             except Exception as e:
                 print(f"Error updating message view: {e}")
@@ -574,7 +574,7 @@ class Rivals(Modal):
         if self.parent_message is not None:
             try:
                 from cogs.views import MarkSoldLayout  # local import to avoid circular
-                updated_view = MarkSoldLayout(self.guild_id, self.uid, acc=acc_content)
+                updated_view = MarkSoldLayout(self.guild_id, self.uid, acc=acc_content,game='rivals')
                 await self.parent_message.edit(view=updated_view)
             except Exception as e:
                 print(f"Error updating message view: {e}")
@@ -753,7 +753,7 @@ class BF6(Modal):
         if self.parent_message is not None:
             try:
                 from cogs.views import MarkSoldLayout
-                updated_view = MarkSoldLayout(self.guild_id, self.uid, acc=acc_content)
+                updated_view = MarkSoldLayout(self.guild_id, self.uid, acc=acc_content,game='battlefield6')
                 await self.parent_message.edit(view=updated_view)
             except Exception as e:
                 print(f"Error updating BF6 message view: {e}")
@@ -846,7 +846,7 @@ class Warzone(Modal):
         if self.parent_message is not None:
             try:
                 from cogs.views import MarkSoldLayout
-                updated_view = MarkSoldLayout(self.guild_id, self.uid, acc=acc_content)
+                updated_view = MarkSoldLayout(self.guild_id, self.uid, acc=acc_content,game='warzone')
                 await self.parent_message.edit(view=updated_view)
             except Exception as e:
                 print(f"Error updating Warzone message view: {e}")
@@ -893,7 +893,7 @@ class ValoRank(Select):
     async def callback(self, interaction: Interaction):
         await interaction.response.send_message(self.values[0])
 
-class ValoAgnet(Select):
+class ValoAgent(Select):
     def __init__(self):
         options = [
             SelectOption(label='Astra',value='Astra',emoji=EMOJIS['astra']),
@@ -946,7 +946,7 @@ class Valorant(Modal):
         self.rank_input = Label(text='Rank', component=ValoRank())
         self.add_item(self.rank_input)
 
-        self.agent_input = Label(text='Agents', component=ValoAgnet())
+        self.agent_input = Label(text='Agents', component=ValoAgent())
         self.add_item(self.agent_input)
     
     async def on_submit(self, interaction: Interaction):
@@ -979,7 +979,7 @@ class Valorant(Modal):
         if self.parent_message is not None:
             try:
                 from cogs.views import MarkSoldLayout  # local import to avoid circular
-                updated_view = MarkSoldLayout(self.guild_id, self.uid, acc=acc_content)
+                updated_view = MarkSoldLayout(self.guild_id, self.uid, acc=acc_content,game='valorant')
                 await self.parent_message.edit(view=updated_view)
             except Exception as e:
                 print(f"Error updating message view: {e}")

@@ -5,6 +5,8 @@ from itertools import cycle
 import asyncio, re
 import pandas as pd
 from datetime import datetime
+
+from pandas.core.arrays import categorical
 import utils.database as db
 
 EMOJIS = {
@@ -15,6 +17,7 @@ EMOJIS = {
     'ow2':'<:ow2:1437768015285452921>',
     'battlefield6':'<:bf6:1437768012391252108>',
     'wz': '<:wz:1447992598253010944>',
+    'arcraiders': '<:arcraiders:1465992591328677981>',
     # platform
     'steam':'<:steam:1437767650032877608>',
     'activision':'<:activision:1437767648476921916>',
@@ -65,7 +68,10 @@ EMOJIS = {
     'vermaakoperator': '<:vermaakoperator:1439307461348688023>',
     'weaveroperator': '<:weaveroperator:1439307463173214348>',
     'weilinoperator':'<:weilinoperator:1439307465291202672>',
-    'zaverioperator': '<:zaverioperator:1439307466633380031>'
+    'zaverioperator': '<:zaverioperator:1439307466633380031>',
+    # Arc Items
+    'items': '<:items:1466001914448711933>',
+    'coins': '<:coins:1466004373053378611>'
 }
 
 async def move_channel(channel,category_name,emoji):
@@ -82,7 +88,7 @@ statuses = cycle([
     Game("⛔ Handling bans"),
     Activity(type=ActivityType.watching, name="Earnings grow 💰"),
     Activity(type=ActivityType.listening,name='Auto saving files 🗃️'),
-    Game("v4.1")
+    Game("v4.5")
 ])
 
 async def cycle_status(client, interval=60):
@@ -243,24 +249,47 @@ def format_monthly_stats_message(stats_data, user_mention):
     
     return message
 
-def create_banned_callback(view_instance):
+def create_banned_callback(view_instance,game):
     async def _banned_on_click(interaction: Interaction):
-        msg = interaction.message
         channel = interaction.channel
-        try:
-            await move_channel(channel, "Banned ⛔", "⛔")
-        except Exception:
-            pass
         # Edit message with LayoutView: Part 1 = mention, Part 2 = desc
         banned_view = LayoutView()
         banned_container = Container()
-        banned_container.add_item(TextDisplay(f'# <@{view_instance.uid}>'))
+        # Part 1: game name
+        game_display_name = get_game_display_name(game)
+        game_emoji = get_game_emoji(game)
+        game_title = TextDisplay(f'## {game_emoji} {game_display_name}')
+        banned_container.add_item(game_title)
         banned_container.add_item(Separator())
-        banned_container.add_item(TextDisplay('الاكونت اتبند ! ربنا يعوض عليك يا برو'))
+        # Part 2: account type
+        banned_container.add_item(TextDisplay(f"🏷️ **Type**"))
+        banned_container.add_item(TextDisplay(f"```{channel.name[1:]}```"))
+        banned_container.add_item(Separator())
+
         banned_view.add_item(banned_container)
-        await msg.edit(view=banned_view)
-        await interaction.response.send_message("gg go next 😥", ephemeral=True)
-        db.log_account(view_instance.uid, 'banned')
+
+        category = discord.utils.get(interaction.guild.categories,name='Banned ⛔')
+        if category is None:
+            category = await interaction.guild.create_category('Banned ⛔')
+
+        target = f'{game}-banned'
+        exist = None
+
+        for ch in category.channels:
+            if target in ch.name:
+                exist = ch
+                break
+        
+        if exist:
+            await exist.send(view=banned_view)
+        else:
+            ch = await category.create_text_channel(f'⛔{game}-banned')
+            await ch.send(view=banned_view)
+
+        await interaction.channel.delete()
+        # db.log_account(view_instance.uid, 'banned')
+        db.log_rec(view_instance.uid,'banned',game)
+        await interaction.response.defer()
     return _banned_on_click
 
 def extract_user_id_from_text(text):
@@ -275,6 +304,31 @@ def extract_user_id_from_text(text):
 
 async def copy_content(interaction: Interaction,txt):
     await interaction.response.send_message(txt,ephemeral=True)
+
+def get_game_display_name(game):
+    """Convert game key to display name"""
+    game_names = {
+        'bo7': 'Black Ops 7',
+        'ow2': 'Overwatch 2',
+        'rivals': 'Marvel Rivals',
+        'battlefield6': 'Battlefield 6',
+        'warzone': 'Warzone',
+        'valorant': 'VALORANT',
+    }
+    return game_names.get(game, game.upper() if game else None)
+
+def get_game_emoji(game):
+    """Get appropriate emoji for each game from utils.py EMOJIS"""
+    # Map game parameter to EMOJIS keys
+    emoji_map = {
+        'bo7': EMOJIS.get('bo7', '🎮'),
+        'ow2': EMOJIS.get('ow2', '🔫'),
+        'rivals': EMOJIS.get('rivals', '⚔️'),
+        'battlefield6': EMOJIS.get('battlefield6', '🎖️'),
+        'warzone': EMOJIS.get('wz', '☣️'),  
+        'valorant': EMOJIS.get('valorant', '💥')
+    }
+    return emoji_map.get(game, EMOJIS.get('bo7', '🎮'))  # Default to BO7 emoji
 
 def setup(client):
     pass

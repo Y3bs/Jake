@@ -2,14 +2,101 @@ import platform
 import discord
 from discord.ext import commands
 from discord import ButtonStyle, Color, TextStyle, app_commands
-from discord.ui import File, FileUpload, Label, LayoutView, Container, Modal, Section, Separator, TextDisplay, ActionRow, Select, TextInput, Button, View
+from discord.ui import FileUpload, Label, LayoutView, Container, Modal, Section, Separator, TextDisplay, ActionRow, Select, TextInput, Button, View
 from discord import Embed, Interaction, SelectOption
+from pymongo import DESCENDING
 from utils.utils import EMOJIS
 from cogs.views import Pending
 import utils.database as db
 
 SUPPORTED_GAMES = ['BO7','OW2','Rivals','Battlefield6','WZ']
 
+class ArcRaidersPanel(LayoutView):
+    def __init__(self):
+        super().__init__(timeout=None)
+        container = Container()
+        title = TextDisplay(f'# تجهيز بانل \n # {EMOJIS["arcraiders"]} Arc Raiders')
+        container.add_item(title)
+        container.add_item(Separator())
+        desc = TextDisplay('الشانلز اللي هيتم انشأها\n- #🛒 arc-panel\n بانل لتسجيل الكوينز او الاغراض اللي بعتها في اللعبة\n- #📑 logs\nشانل لعرض التسجيلات')
+        container.add_item(desc)
+        container.add_item(Separator())
+        
+        # Create the setup button
+        setup_btn = Button(label='إعداد البانل', style=ButtonStyle.primary, emoji='⚙️')
+        setup_btn.callback = self.setup_callback
+        
+        btn_row = ActionRow()
+        btn_row.add_item(setup_btn)
+        container.add_item(btn_row)
+        self.add_item(container)
+    
+    async def setup_callback(self, interaction: Interaction):
+        await interaction.response.defer(ephemeral=True)
+
+        from utils.storage import has_arcraiders_panel, save_arcraiders_panel
+    
+        # Check if Arc Raiders panel already exists
+        if has_arcraiders_panel(interaction.guild.id):
+            error_embed = discord.Embed(
+                title="⚠️ بانل موجودة بالفعلا",
+                description="في ارك بانل موجودة بالفعل عندك في السيرفر",
+                color=discord.Color.orange()
+            )
+        
+            # Get existing panel info for helpful message
+            from utils.storage import get_arcraiders_panel
+            panel_info = get_arcraiders_panel(interaction.guild.id)
+        
+            if panel_info:
+                error_embed.add_field(
+                    name="البانل الحالية",
+                    value=f"• Panel Channel: <#{panel_info.get('panel_channel_id', 'Unknown')}>\n• Logs Channel: <#{panel_info.get('logs_channel_id', 'Unknown')}>",
+                    inline=False
+                )
+
+            return await interaction.followup.send(embed=error_embed, ephemeral=True)
+
+        arc_category = discord.utils.get(interaction.guild.categories, name="🎯 Arc Raiders")
+        if arc_category is None:
+            arc_category = await interaction.guild.create_category("🎯 Arc Raiders")
+        
+        # Create user-named channel with restricted visibility
+        overwrites = {
+            interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            interaction.user: discord.PermissionOverwrite(
+                view_channel=True,
+                send_messages=True,
+                attach_files=True,
+                read_message_history=True
+            )
+        }
+        
+        panel_channel = await arc_category.create_text_channel(
+            "🛒arc-panel",
+            overwrites=overwrites
+        )
+        
+        logs_channel = await arc_category.create_text_channel(
+            "📑logs",
+            overwrites=overwrites
+        )
+
+        save_arcraiders_panel(
+        guild_id=interaction.guild.id,
+        panel_channel_id=panel_channel.id,
+        logs_channel_id=logs_channel.id
+        )
+        # confirmation msg 
+        container = Container()
+        container.add_item(TextDisplay('تم اعداد البانل بنجاح ✅'))
+        view = LayoutView()
+        view.add_item(container)
+
+        from cogs.views import ArcRaiders
+        await interaction.followup.send(view=view,ephemeral=True)
+        await panel_channel.send(view=ArcRaiders(logs_channel))
+            
 class AccContent(Modal):
     def __init__(self,guild,user,game_value,guild_id:int):
         super().__init__(title='📃 Account Content')
@@ -62,7 +149,7 @@ class AccContent(Modal):
             )
         }
         channel = await category.create_text_channel(
-            f"🔃{user.name}",
+            f"🔃{self.game}-fresh", # نغير الاسم لاسم اللعبة وبعديها كلمة pending
             overwrites=overwrites
         )
 
@@ -122,7 +209,8 @@ class Games(Select):
             SelectOption(label='Marvel Rivals', value='rivals', emoji=EMOJIS['rivals']),
             SelectOption(label='Battlefield 6', value='battlefield6', emoji=EMOJIS['battlefield6']),
             SelectOption(label='Warzone', value='warzone', emoji=EMOJIS['wz']),
-            SelectOption(label='Valorant', value='valorant',emoji=EMOJIS['valorant'])
+            SelectOption(label='Valorant', value='valorant',emoji=EMOJIS['valorant']),
+            SelectOption(label='Arc Raiders',value='arcraiders',emoji=EMOJIS['arcraiders'])
         ]
         super().__init__(
             placeholder="Select your game...",
@@ -135,6 +223,10 @@ class Games(Select):
     async def callback(self, interaction: Interaction):
         game_value = self.values[0]
         
+        if game_value == 'arcraiders':
+            return await interaction.response.send_message(view=ArcRaidersPanel(),ephemeral=True)
+            
+
         # Create and send the skip/upload view
         view = SkipOrUploadView(
             guild=interaction.guild,
@@ -180,7 +272,7 @@ class Accs(LayoutView):
         self.action_row = ActionRow(self.select_menu)
         
         # Stats button - UPDATED
-        self.stats_btn = Button(label='احصائياتي', style=ButtonStyle.green, emoji='📊', custom_id='stats_btn')
+        self.stats_btn = Button(label='احصائياتي', style=ButtonStyle.green, emoji='📊', custom_id='stats_btn',disabled=True)
         self.stats_btn.callback = self.stats_callback  
         
         self.stats_title = TextDisplay('# الاحصائيات 📊')
