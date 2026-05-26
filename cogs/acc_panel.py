@@ -1,4 +1,3 @@
-import platform
 import discord
 from discord.ext import commands
 from discord import ButtonStyle, Color, TextStyle, app_commands
@@ -257,43 +256,29 @@ class Games(Select):
             ephemeral=True
         )
 
-class Accs(LayoutView):
+class GamesStats(Select):
     def __init__(self, guild_id):
-        super().__init__(timeout=None)
         self.guild_id = guild_id
-        
-        # Create Text
-        self.title = TextDisplay("# الاكونتات 📮")
-        self.sep = Separator()
-        self.desc = TextDisplay('اختار اللعبة 🎮')
-        
-        # Create action row for the select menu
-        self.select_menu = Games(self.guild_id)
-        self.action_row = ActionRow(self.select_menu)
-        
-        # Stats button - UPDATED
-        self.stats_btn = Button(label='احصائياتي', style=ButtonStyle.green, emoji='📊', custom_id='stats_btn',disabled=True)
-        self.stats_btn.callback = self.stats_callback  
-        
-        self.stats_title = TextDisplay('# الاحصائيات 📊')
-        self.stats_desc = TextDisplay('احصائيات الشهر الحالي')
-        self.stats_section = ActionRow(self.stats_btn)
-
-        # Create container with the action row
-        self.container = Container()
-        self.container.add_item(self.title)
-        self.container.add_item(self.sep)
-        self.container.add_item(self.desc)
-        self.container.add_item(self.action_row)
-
-        self.container.add_item(self.sep)
-        self.container.add_item(self.stats_title)
-        self.container.add_item(self.stats_desc)
-        self.container.add_item(self.stats_section)
-        # Add container to the layout
-        self.add_item(self.container)
+        options = [
+            SelectOption(label='All games',value='all',emoji='🕹️'),
+            SelectOption(label='BO7', value='bo7', emoji=EMOJIS['bo7']),
+            SelectOption(label='Overwatch 2', value='ow2', emoji=EMOJIS['ow2']),
+            SelectOption(label='Marvel Rivals', value='rivals', emoji=EMOJIS['rivals']),
+            SelectOption(label='Battlefield 6', value='battlefield6', emoji=EMOJIS['battlefield6']),
+            SelectOption(label='Warzone', value='warzone', emoji=EMOJIS['wz']),
+            SelectOption(label='Valorant', value='valorant',emoji=EMOJIS['valorant']),
+            SelectOption(label='Arc Raiders',value='arcraiders',emoji=EMOJIS['arcraiders'])
+        ]
+        super().__init__(
+            placeholder="Select your game...",
+            min_values=1,
+            max_values=1,
+            options=options,
+            custom_id="game_stats_selector"
+        )
     
-    async def stats_callback(self, interaction: Interaction):
+    async def callback(self, interaction: Interaction):
+        game = self.values[0]
         """Callback for stats button - shows current month statistics"""
         await interaction.response.defer(ephemeral=True)
         
@@ -302,7 +287,7 @@ class Accs(LayoutView):
             from utils.utils import get_current_month_stats, format_monthly_stats_message
             
             # Get stats for current user
-            stats_data = get_current_month_stats(interaction.user.id)
+            stats_data = get_current_month_stats(interaction.user.id,game)
             
             # Create a LayoutView for displaying stats
             stats_view = LayoutView(timeout=None)
@@ -344,6 +329,41 @@ class Accs(LayoutView):
             error_container.add_item(TextDisplay(content=f"حدث خطأ: {str(e)}"))
             error_view.add_item(error_container)
             await interaction.followup.send(view=error_view, ephemeral=True)
+
+class Accs(LayoutView):
+    def __init__(self, guild_id):
+        super().__init__(timeout=None)
+        self.guild_id = guild_id
+        
+        # Create Text
+        self.title = TextDisplay("# الاكونتات 📮")
+        self.sep = Separator()
+        self.desc = TextDisplay('اختار اللعبة 🎮')
+        
+        # Create action row for the select menu
+        self.select_menu = Games(self.guild_id)
+        self.action_row = ActionRow(self.select_menu)
+        
+        # Stats button - UPDATED
+        self.stats_title = TextDisplay('# الاحصائيات 📊')
+        self.stats_desc = TextDisplay('احصائيات الشهر الحالي (تقدر تشوف للعبة محددة او لكله)')
+        
+        self.stats_select =  GamesStats(self.guild_id)
+        self.stats_section = ActionRow(self.stats_select)
+
+        # Create container with the action row
+        self.container = Container()
+        self.container.add_item(self.title)
+        self.container.add_item(self.sep)
+        self.container.add_item(self.desc)
+        self.container.add_item(self.action_row)
+
+        self.container.add_item(self.sep)
+        self.container.add_item(self.stats_title)
+        self.container.add_item(self.stats_desc)
+        self.container.add_item(self.stats_section)
+        # Add container to the layout
+        self.add_item(self.container)        
 
 class Panel(commands.Cog):
     def __init__(self,client):

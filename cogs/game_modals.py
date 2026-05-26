@@ -1,4 +1,3 @@
-from typing import Text
 import discord
 from discord import Interaction,Embed,PermissionOverwrite, SelectOption
 from discord.ui import Modal,TextInput, Label, Select, Button, View,ChannelSelect

@@ -124,34 +124,29 @@ def check_wallet_type(select:str,type: str):
         return total % 10 == 0
     return True
 
-def get_current_month_stats(user_id):
+def get_current_month_stats(user_id, game_filter="all"):
     """
-    Get current month statistics for a user without visualization.
+    Get current month statistics for a user, optionally filtered by game.
     
     Args:
         user_id: Discord user ID
+        game_filter: "all" for all games, or specific game name like "bo7", "ow2", etc.
         
     Returns:
         dict: Current month statistics or error message
     """
     try:
-        # Get user stats from database
-        user_stats = db.find_player(user_id)
+        # First check if player is registered in players collection
+        player_data = db.find_player(user_id)
         
         # Handle not registered users
-        if not user_stats:
+        if not player_data:
             return {
                 'error': True,
                 'message': "أنت غير مسجل في قاعدة البيانات. استخدم `/register` أولاً!",
-                'registered': False
-            }
-        
-        # Handle no history
-        if not user_stats.get('history'):
-            return {
-                'error': True,
-                'message': "ليس لديك أي تاريخ للحسابات بعد!\nابدأ ببيع الحسابات لترى إحصائياتك هنا.",
-                'no_history': True
+                'registered': False,
+                'no_history': False,
+                'game_filter': game_filter
             }
         
         # Get current month and year
@@ -159,28 +154,94 @@ def get_current_month_stats(user_id):
         current_month = now.month
         current_year = now.year
         
-        # Filter history for current month
-        current_month_history = []
-        for record in user_stats.get('history', []):
+        # Get all records for this user
+        try:
+            player_records = db.get_player_records(user_id)
+        except AttributeError:
             try:
-                record_time = pd.to_datetime(record.get('time'))
-                if record_time.month == current_month and record_time.year == current_year:
-                    current_month_history.append(record)
-            except:
+                records_collection = db.records
+                player_records = list(records_collection.find({'user_id': user_id}))
+            except Exception as e:
+                return {
+                    'error': True,
+                    'message': f"فشل في الوصول إلى سجلات اللاعب: {str(e)}",
+                    'registered': True,
+                    'no_history': False,
+                    'game_filter': game_filter
+                }
+        
+        # If no records found
+        if not player_records:
+            return {
+                'error': True,
+                'message': "ليس لديك أي سجلات للحسابات بعد!",
+                'registered': True,
+                'no_history': True,
+                'game_filter': game_filter
+            }
+        
+        # Filter records for current month AND optionally by game
+        current_month_records = []
+        for record in player_records:
+            try:
+                record_time = pd.to_datetime(record.get('timestamp') or record.get('time'))
+                
+                # Check if record is in current month/year
+                time_match = record_time.month == current_month and record_time.year == current_year
+                
+                # Check game filter
+                game_match = True
+                if game_filter != "all":
+                    record_game = record.get('game', '').lower()
+                    game_filter_lower = game_filter.lower()
+                    game_match = record_game == game_filter_lower
+                
+                if time_match and game_match:
+                    current_month_records.append(record)
+            except Exception:
                 continue
+        
+        # If no records match the filter
+        if not current_month_records:
+            if game_filter == "all":
+                return {
+                    'error': True,
+                    'message': f"ليس لديك أي سجلات في شهر {now.strftime('%B')}!",
+                    'registered': True,
+                    'no_history': True,
+                    'month_name': now.strftime("%B"),
+                    'year': current_year,
+                    'game_filter': game_filter
+                }
+            else:
+                game_display = get_game_display_name(game_filter) or game_filter
+                return {
+                    'error': True,
+                    'message': f"ليس لديك أي سجلات للعبة {game_display} في شهر {now.strftime('%B')}!",
+                    'registered': True,
+                    'no_history': True,
+                    'month_name': now.strftime("%B"),
+                    'year': current_year,
+                    'game_filter': game_filter
+                }
         
         # Calculate current month stats
         sold_current_month = 0
         banned_current_month = 0
         earnings_current_month = 0
+        games_handled = set()  # Track unique games in filtered records
         
-        for record in current_month_history:
+        for record in current_month_records:
             action = record.get('action', '').lower()
-            price = record.get('price', 0)
+            price = record.get('price', 0) or record.get('amount', 0)
+            game = record.get('game', 'unknown')
+            
+            # Track unique games
+            games_handled.add(game)
             
             if action == 'sold':
                 sold_current_month += 1
-                earnings_current_month += price
+                earnings_current_month += int(price) if price else 0
             elif action == 'banned':
                 banned_current_month += 1
         
@@ -195,8 +256,36 @@ def get_current_month_stats(user_id):
         if sold_current_month > 0:
             avg_sale_current_month = earnings_current_month / sold_current_month
         
-        # Get total number of wallets
-        wallets_count = len(user_stats.get('wallets', {}))
+        # Get wallet count from player data
+        wallets = player_data.get('wallets', {})
+        wallets_count = 0
+        for wallet_type in ['visa', 'vodafone', 'instapay']:
+            wallet_data = wallets.get(wallet_type, [])
+            if isinstance(wallet_data, list):
+                wallets_count += len(wallet_data)
+            elif wallet_data:
+                wallets_count += 1
+        
+        # Get filtered all-time stats for comparison
+        total_sold_all_time = 0
+        total_earnings_all_time = 0
+        games_all_time = set()
+        
+        for record in player_records:
+            action = record.get('action', '').lower()
+            game = record.get('game', 'unknown')
+            
+            # Apply game filter for all-time stats too
+            if game_filter != "all":
+                record_game = record.get('game', '').lower()
+                if record_game != game_filter.lower():
+                    continue
+            
+            games_all_time.add(game)
+            
+            if action == 'sold':
+                total_sold_all_time += 1
+                total_earnings_all_time += int(record.get('price', 0) or record.get('amount', 0))
         
         return {
             'error': False,
@@ -207,14 +296,23 @@ def get_current_month_stats(user_id):
             'avg_sale_current_month': avg_sale_current_month,
             'wallets_count': wallets_count,
             'total_current_month': total_current_month,
-            'month_name': now.strftime("%B"),  # Current month name
-            'year': current_year
+            'month_name': now.strftime("%B"),
+            'year': current_year,
+            'total_sold_all_time': total_sold_all_time,
+            'total_earnings_all_time': total_earnings_all_time,
+            'records_count': len(current_month_records),
+            'game_filter': game_filter,
+            'games_handled': list(games_handled),
+            'games_all_time': list(games_all_time)
         }
         
     except Exception as e:
         return {
             'error': True,
-            'message': f"فشل في إنشاء الإحصائيات: {str(e)}"
+            'message': f"فشل في إنشاء الإحصائيات: {str(e)}",
+            'registered': True,
+            'no_history': False,
+            'game_filter': game_filter
         }
 
 
@@ -230,22 +328,77 @@ def format_monthly_stats_message(stats_data, user_mention):
         str: Formatted message
     """
     if stats_data.get('error'):
-        return stats_data.get('message', 'حدث خطأ في جلب الإحصائيات.')
+        if stats_data.get('registered') == False:
+            return "## ❌ التسجيل مطلوب\nأنت غير مسجل في قاعدة البيانات. استخدم `/register` أولاً!"
+        elif stats_data.get('no_history'):
+            month_name = stats_data.get('month_name', 'هذا الشهر')
+            year = stats_data.get('year', '')
+            game_filter = stats_data.get('game_filter', 'all')
+            
+            if game_filter == "all":
+                return f"## 📭 لا توجد سجلات\nليس لديك أي سجلات للحسابات في {month_name} {year}!\nابدأ ببيع الحسابات لترى إحصائياتك هنا."
+            else:
+                game_display = get_game_display_name(game_filter) or game_filter
+                return f"## 🎮 لا توجد سجلات للعبة\nليس لديك أي سجلات للعبة **{game_display}** في {month_name} {year}!"
+        else:
+            return f"## ❌ خطأ في الإحصائيات\n{stats_data.get('message', 'حدث خطأ غير معروف.')}"
     
     month_name = stats_data.get('month_name', '')
     year = stats_data.get('year', '')
+    game_filter = stats_data.get('game_filter', 'all')
     
-    message = f"## 📊 إحصائيات {month_name} {year}\n"
+    # Create header based on filter
+    if game_filter == "all":
+        message = f"## 📊 إحصائيات {month_name} {year} - جميع الألعاب\n"
+    else:
+        game_display = get_game_display_name(game_filter) or game_filter
+        game_emoji = get_game_emoji(game_filter)
+        message = f"## {game_emoji} إحصائيات {month_name} {year} - {game_display}\n"
+    
     message += f"**للمستخدم:** {user_mention}\n\n"
     
     # Current month stats
-    message += "**📈 إحصائيات الشهر الحالي:**\n"
+    if game_filter == "all":
+        message += "**📈 إحصائيات الشهر الحالي (جميع الألعاب):**\n"
+    else:
+        message += f"**📈 إحصائيات الشهر الحالي:**\n"
+    
     message += f"• **💸 مباع هذا الشهر:** {stats_data['sold_current_month']} حساب\n"
     message += f"• **⛔ محظور هذا الشهر:** {stats_data['banned_current_month']} حساب\n"
     message += f"• **📦 معدل النجاح:** {stats_data['success_rate_current_month']:.1f}%\n"
-    message += f"• **💰 أرباح هذا الشهر:** {stats_data['earnings_current_month']} ج.م\n"
+    message += f"• **💰 أرباح هذا الشهر:** {stats_data['earnings_current_month']:,} ج.م\n"
     message += f"• **⚖️ متوسط سعر البيع:** {stats_data['avg_sale_current_month']:.1f} ج.م\n"
-    message += f"• **💳 محافظ مسجلة:** {stats_data['wallets_count']}\n"
+    
+    # Only show wallets count for all games (it's user-specific, not game-specific)
+    if game_filter == "all":
+        message += f"• **💳 محافظ مسجلة:** {stats_data['wallets_count']}\n"
+    
+    # Show games handled in this month (if filtered by "all")
+    if game_filter == "all" and stats_data.get('games_handled'):
+        games_list = []
+        for game in stats_data['games_handled']:
+            game_display = get_game_display_name(game) or game
+            games_list.append(game_display)
+        
+        if games_list:
+            message += f"• **🎮 الألعاب التي تم التعامل معها:** {', '.join(games_list)}\n"
+    
+    # Add all-time stats if available
+    if stats_data.get('total_sold_all_time') is not None:
+        if game_filter == "all":
+            message += "\n**⏳ إحصائيات كل الوقت (جميع الألعاب):**\n"
+        else:
+            message += f"\n**⏳ إحصائيات كل الوقت للعبة:**\n"
+        
+        message += f"• **🏆 إجمالي المباع:** {stats_data['total_sold_all_time']} حساب\n"
+        message += f"• **💎 إجمالي الأرباح:** {stats_data['total_earnings_all_time']:,} ج.م\n"
+    
+    # Add a summary footer
+    if stats_data['total_current_month'] > 0:
+        if game_filter == "all":
+            message += f"\n**📋 ملخص الشهر:** تمت معالجة **{stats_data['total_current_month']}** حساب من {len(stats_data.get('games_handled', []))} لعبة مختلفة"
+        else:
+            message += f"\n**📋 ملخص الشهر:** تمت معالجة **{stats_data['total_current_month']}** حساب"
     
     return message
 

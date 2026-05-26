@@ -1,7 +1,3 @@
-from gettext import Catalog
-import os
-from platform import java_ver
-from typing import Text
 import discord,re
 from discord import ButtonStyle,Button,Interaction, MediaGalleryComponent, SelectOption,Color, TextStyle
 from discord.components import MediaGalleryItem
@@ -411,6 +407,8 @@ class Money(Modal):
             price = int(self.children[0].value)
         except ValueError:
             return await interaction.followup.send('حط سعر الاكونت كا رقم بس')
+        if not db.find_player(self.uid):
+            db.save_player(self.uid)
         method = self.method.component.values[0]
         # db.log_account(self.uid,'sold',price)
         db.log_rec(self.uid,'sold',self.game,interaction.channel.name[1:],price,method)
@@ -461,7 +459,7 @@ class Money(Modal):
         container.add_item(Separator())
         
         # Part 4: Method
-        container.add_item(TextDisplay(f'**Method**'))
+        container.add_item(TextDisplay(f'💳 **Method**'))
         container.add_item(TextDisplay(f'{EMOJIS[method]} **{method.capitalize()}**'))
 
         view = LayoutView()

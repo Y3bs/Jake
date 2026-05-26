@@ -4,6 +4,8 @@ from discord.ext import commands
 from discord.ui import LayoutView,View, Container, TextDisplay, Separator, Button, ActionRow
 from discord import Interaction, TextStyle, Color, app_commands
 
+from utils.utils import EMOJIS
+
 class HelpV2(LayoutView):
     def __init__(self):
         super().__init__(timeout=None)
@@ -27,8 +29,8 @@ class HelpV2(LayoutView):
         
         # Getting Started section
         container.add_item(TextDisplay(content="## 🎮 البداية"))
-        getting_started = TextDisplay(content="""**1.** `/register` - إنشاء ملفك الشخصي كبائع
-**2.** `/register_wallet` - إضافة طرق الدفع
+        getting_started = TextDisplay(content="""**1.** `/register` - إنشاء ملفك الشخصي 
+**2.** `/save_wallet` - إضافة محفظة 
 **3.** `/me` - عرض إحصائياتك وأرباحك
 **4.** استخدم لوحة الحسابات لبدء البيع""")
         container.add_item(getting_started)
@@ -36,21 +38,23 @@ class HelpV2(LayoutView):
         
         # Game Support section  
         container.add_item(TextDisplay(content="## 🎯 الألعاب المدعومة"))
-        games = TextDisplay(content="""• **BO7** - Call of Duty: Black Ops 7
-• **OW2** - Overwatch 2  
-• **Marvel Rivals**
-• **Battlefield 6**
-• **Warzone** - Call of Duty: Black Ops 7 Warzone""")
+        games = TextDisplay(content=f"""• {EMOJIS['bo7']} **BO7** - Call of Duty: Black Ops 7
+• {EMOJIS['ow2']} **OW2** - Overwatch 2  
+• {EMOJIS['rivals']} **Marvel Rivals**
+• {EMOJIS['battlefield6']} **Battlefield 6**
+• {EMOJIS['wz']} **Warzone** - Call of Duty: Black Ops 7 Warzone
+• {EMOJIS['valorant']} **VALORANT**
+• {EMOJIS['arcraiders']} **Arc Raiders**""")
         container.add_item(games)
         container.add_item(Separator())
         
         # Account Process section
         container.add_item(TextDisplay(content="## 📦 عملية الحساب"))
-        process = TextDisplay(content="""**Pending 🔃** → الحساب تم تقديمه
-**For Sale 🏷️** → جاهز للعملاء  
+        process = TextDisplay(content="""**Pending 🔃** → الحساب لسه فريش
+**For Sale 🏷️** → جاهز ومتاح للبيع  
 **Sold 📦** → الحساب تم تسليمه
-**Paid 💰** → تم استلام الدفع
-**Banned ⛔** → الحساب محظور""")
+**Paid 💰** → تم استلام الفلوس
+**Banned ⛔** → الحساب اتبند""")
         container.add_item(process)
         
         self.add_item(container)

@@ -1,11 +1,12 @@
 from pymongo import MongoClient
+import certifi
 from dotenv import load_dotenv
 import os
 from datetime import date, datetime,timedelta
 
 load_dotenv()
 DB_TOKEN = os.getenv('DB_TOKEN')
-db = MongoClient(DB_TOKEN)
+db = MongoClient(DB_TOKEN, tlsCAFile=certifi.where())
 
 def find_player(id):
     try:
@@ -37,6 +38,13 @@ def delete_player(id):
     except Exception as e:
         print(f"Error Deleting Player from database\nError: {e}")
 
+def get_player_records(id):
+    try:
+        records = list(db.carrier.records.find({'id':id}))
+        return records
+    except Exception as e:
+        print(f"Getting player records failed\nError: {e}")
+        
 def save_wallet(user_id: int,type:str,wallet: str):
     user = find_player(user_id)
     try:
