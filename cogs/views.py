@@ -237,10 +237,10 @@ class MarkSoldLayout(LayoutView):
         if data is not None:
             wallets = data.get('wallets', {}) if isinstance(data, dict) else {}
             visa_data = wallets.get('visa', [])
-            vodafone_data = wallets.get('vodafone', [])
+            e_wallet_data = wallets.get('e-wallet', [])
             instapay_data = wallets.get('instapay', [])
             wallets_data = []
-            has_any = bool(visa_data or vodafone_data or instapay_data)
+            has_any = bool(visa_data or e_wallet_data or instapay_data)
             if has_any:
                 container.add_item(Separator())
                 container.add_item(TextDisplay('💳 **المحافظ المسجلة**'))
@@ -251,23 +251,23 @@ class MarkSoldLayout(LayoutView):
                         container.add_item(TextDisplay(f"{EMOJIS['visa']} **Visa** ```ansi\n{holder} — [34m{number}[0m```"))
                         wallets_data.append({
                             'label':f'{holder} - {number}',
-                            'value':f'{holder}\n{number}',
+                            'value':f'visa|{holder}\n{number}',
                             'emoji': EMOJIS['visa'],
                         })
-                if vodafone_data:
-                    for num in vodafone_data:
-                        container.add_item(TextDisplay(f"{EMOJIS['vodafone']} **Vodafone Cash** ```ansi\n[31m{num}[0m```"))
+                if e_wallet_data:
+                    for num in e_wallet_data:
+                        container.add_item(TextDisplay(f"{EMOJIS['ewallet']} **E-Wallet** ```{num}```"))
                         wallets_data.append({
                             'label':num,
-                            'value':num,
-                            'emoji':EMOJIS['vodafone']
+                            'value':f'ewallet|{num}',
+                            'emoji':EMOJIS['ewallet']
                         })
                 if instapay_data:
                     for num in instapay_data:
                         container.add_item(TextDisplay(f"{EMOJIS['instapay']} **Instapay** ```ansi\n[35m{num}[0m```"))
                         wallets_data.append({
                             'label':num,
-                            'value':num,
+                            'value':f'instapay|{num}',
                             'emoji':EMOJIS['instapay']
                         })
             if wallets_data:
@@ -339,10 +339,10 @@ class CashInLayout(LayoutView):
         if data is not None:
             wallets = data.get('wallets', {}) if isinstance(data, dict) else {}
             visa_data = wallets.get('visa', [])
-            vodafone_data = wallets.get('vodafone', [])
+            e_wallet_data = wallets.get('e-wallet', [])
             instapay_data = wallets.get('instapay', [])
             wallets_data = []
-            has_any = bool(visa_data or vodafone_data or instapay_data)
+            has_any = bool(visa_data or e_wallet_data or instapay_data)
             if has_any:
                 container.add_item(Separator())
                 container.add_item(TextDisplay('💳 **المحافظ المسجلة**'))
@@ -353,23 +353,23 @@ class CashInLayout(LayoutView):
                         container.add_item(TextDisplay(f"{EMOJIS['visa']} **Visa** ```ansi\n{holder} — [34m{number}[0m```"))
                         wallets_data.append({
                             'label':f'{holder} - {number}',
-                            'value':f'{holder}\n{number}',
+                            'value':f'visa|{holder}\n{number}',
                             'emoji': EMOJIS['visa'],
                         })
-                if vodafone_data:
-                    for num in vodafone_data:
-                        container.add_item(TextDisplay(f"{EMOJIS['vodafone']} **Vodafone Cash** ```ansi\n[31m{num}[0m```"))
+                if e_wallet_data:
+                    for num in e_wallet_data:
+                        container.add_item(TextDisplay(f"{EMOJIS['ewallet']} **E-Wallet** ```{num}```"))
                         wallets_data.append({
                             'label':num,
-                            'value':num,
-                            'emoji':EMOJIS['vodafone']
+                            'value':f'ewallet|{num}',
+                            'emoji':EMOJIS['ewallet']
                         })
                 if instapay_data:
                     for num in instapay_data:
                         container.add_item(TextDisplay(f"{EMOJIS['instapay']} **Instapay** ```ansi\n[35m{num}[0m```"))
                         wallets_data.append({
                             'label':num,
-                            'value':num,
+                            'value':f'instapay|{num}',
                             'emoji':EMOJIS['instapay']
                         })
             if wallets_data:
@@ -469,7 +469,7 @@ class Money(Modal):
 class Method(Select):
     def __init__(self):
         options = [
-            SelectOption(label='فودافون كاش', value='vodafone', emoji=EMOJIS['vodafone']),
+            SelectOption(label='محفظة إلكترونية', value='e-wallet', emoji=EMOJIS['ewallet']),
             SelectOption(label='انستاباي', value='instapay', emoji=EMOJIS['instapay']),
             SelectOption(label='فيزا', value='visa', emoji=EMOJIS['visa'])
         ]
@@ -494,7 +494,12 @@ class CopyPayment(Select):
         )
     
     async def callback(self, interaction: Interaction):
-        await interaction.response.send_message(self.values[0],ephemeral=True)
+        value = self.values[0]
+        for prefix in ('visa|', 'ewallet|', 'instapay|'):
+            if value.startswith(prefix):
+                value = value[len(prefix):]
+                break
+        await interaction.response.send_message(value, ephemeral=True)
 
 class ArcItemsRarity(Select):
     def __init__(self):

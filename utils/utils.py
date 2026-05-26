@@ -25,6 +25,7 @@ EMOJIS = {
     'ea':'<:ea:1437767645892972684>',
     'battlenet':'<:battlenet:1437769329885184040>',
     # wallets
+    'ewallet': '<:ewallet:1508893580150833223>',
     'vodafone': '<:Vodafone:1437769331076501607>',
     'instapay': '<:Instapay:1437769332506497147>',
     'visa': '<:Visa:1437769333790212168>',
@@ -104,7 +105,7 @@ def get_user_id(msg: Message):
     return None
 
 def check_wallet_type(select:str,type: str):
-    if select == 'vodafone':
+    if select == 'e-wallet':
         num = '0125'
         if not type.startswith('01') or type[2] not in num or not type[3:].isdigit():
             return False
@@ -259,7 +260,7 @@ def get_current_month_stats(user_id, game_filter="all"):
         # Get wallet count from player data
         wallets = player_data.get('wallets', {})
         wallets_count = 0
-        for wallet_type in ['visa', 'vodafone', 'instapay']:
+        for wallet_type in ['visa', 'e-wallet', 'instapay']:
             wallet_data = wallets.get(wallet_type, [])
             if isinstance(wallet_data, list):
                 wallets_count += len(wallet_data)

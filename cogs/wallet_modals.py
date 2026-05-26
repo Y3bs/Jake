@@ -4,9 +4,9 @@ from discord.ui.text_input import TextStyle
 from utils.utils import EMOJIS, check_wallet_type
 import utils.database as db
 
-class Vodafone(Modal):
+class EWallet(Modal):
     def __init__(self):
-        super().__init__(title='Vodafone Cash')
+        super().__init__(title='E-Wallet')
         self.add_item(
             TextInput(label='Wallet Number',style=TextStyle.short,min_length=11,max_length=11,required=True)
         )
@@ -15,7 +15,7 @@ class Vodafone(Modal):
         wallet = self.children[0].value
         await interaction.response.defer(ephemeral=True)
 
-        if not check_wallet_type('vodafone',wallet):
+        if not check_wallet_type('e-wallet',wallet):
             error = Embed(
                 title='❌ رقم محفظة غير صالح',
                 description='أتأكد انك تحط رقم محفظة موجود فعلا',
@@ -23,7 +23,7 @@ class Vodafone(Modal):
             )
             return await interaction.followup.send(embed=error,ephemeral=True)
 
-        if db.wallet_exist(interaction.user.id,'vodafone',wallet):
+        if db.wallet_exist(interaction.user.id,'e-wallet',wallet):
             embed = Embed(
                 title='المحفظة موجودة بالفعل',
                 description='المحفظة دي متسجلة بالفعل علي حسابك',
@@ -32,12 +32,12 @@ class Vodafone(Modal):
 
         embed = Embed(
             title='تم تسجيل محفظة جديدة 🆕',
-            description=f'**Vodafone Cash** {EMOJIS['vodafone']} متسجلة ك',
+            description=f'**E-Wallet** {EMOJIS['ewallet']} متسجلة ك',
             color=0x038c07
         )
-        embed.add_field(name='Vodafone Cash Number',value=f'```{wallet}```')
+        embed.add_field(name='E-Wallet Number',value=f'```{wallet}```')
         await interaction.followup.send(embed=embed,ephemeral=True)
-        db.save_wallet(interaction.user.id,'vodafone',wallet)
+        db.save_wallet(interaction.user.id,'e-wallet',wallet)
 
 class Instapay(Modal):
     def __init__(self):

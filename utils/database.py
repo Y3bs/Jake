@@ -23,7 +23,7 @@ def save_player(id):
             "banned": 0,
             "earnings": 0,
             "wallets": {
-                "vodafone":[],
+                "e-wallet":[],
                 "instapay":[],
                 "visa": []
             }
@@ -48,7 +48,7 @@ def get_player_records(id):
 def save_wallet(user_id: int,type:str,wallet: str):
     user = find_player(user_id)
     try:
-        if type in ['vodafone','instapay']:
+        if type in ['e-wallet','instapay']:
             if wallet not in user['wallets'][type]:
                 db.carrier.players.update_one({"id":user_id},{"$push": {f"wallets.{type}": wallet}})
 
@@ -67,7 +67,7 @@ def save_wallet(user_id: int,type:str,wallet: str):
 def wallet_exist(user_id:int,type:str,wallet):
     try:
         user = db.carrier.players.find_one({"id":user_id})
-        if type in ['vodafone','instapay']:
+        if type in ['e-wallet','instapay']:
             return wallet in user['wallets'][type]
         elif type == 'visa':
             return any(w['number'] == wallet[0] for w in user["wallets"][type])
